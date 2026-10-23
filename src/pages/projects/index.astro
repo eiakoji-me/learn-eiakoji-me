@@ -1,0 +1,23 @@
+---
+import ContentCard from '../../components/ContentCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { fetchContent } from '../../lib/content';
+import { projectsQuery } from '../../lib/sanity/queries';
+import type { ContentSummary } from '../../lib/sanity/types';
+
+const projects = await fetchContent<ContentSummary[]>(projectsQuery);
+---
+
+<BaseLayout title="Projects" description="Project case studies and implementation notes by Eiakoji.">
+  <header class="page-heading shell">
+    <p class="eyebrow">From problem to proof</p>
+    <h1>Projects</h1>
+    <p>Case studies that connect the finished work to the tradeoffs, experiments, and implementation behind it.</p>
+  </header>
+  <section class="section shell" aria-label="Published projects">
+    {projects.length > 0 ? <div class="card-grid">{projects.map((item) => <ContentCard item={item} />)}</div> : (
+      <EmptyState title="No published projects yet" message="Published project write-ups will appear here after the next content build." />
+    )}
+  </section>
+</BaseLayout>

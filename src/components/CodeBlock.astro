@@ -1,0 +1,14 @@
+---
+import type { Props as PortableTextProps } from '@portabletext/astro/types';
+import type { CodeBlock } from '../lib/sanity/types';
+
+type Props = PortableTextProps<CodeBlock>;
+const { node } = Astro.props;
+---
+
+<div class="code-block">
+  {(node.filename || node.language) && (
+    <div class="code-label"><span>{node.filename ?? node.language}</span>{node.filename && node.language && <span>{node.language}</span>}</div>
+  )}
+  <pre><code class={node.language ? `language-${node.language}` : undefined}>{node.code}</code></pre>
+</div>

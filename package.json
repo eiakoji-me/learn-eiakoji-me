@@ -1,0 +1,32 @@
+{
+  "name": "learn-eiakoji-me",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 0.0.0.0",
+    "build": "astro build",
+    "preview": "astro preview --host 0.0.0.0",
+    "check": "astro check",
+    "studio": "sanity dev --host 0.0.0.0",
+    "studio:build": "sanity build .sanity-dist",
+    "verify": "npm run check && npm run studio:build && npm run build"
+  },
+  "dependencies": {
+    "@portabletext/astro": "^0.2.0",
+    "@portabletext/types": "^4.0.2",
+    "@sanity/astro": "^3.5.3",
+    "@sanity/client": "^8.10.1",
+    "@sanity/image-url": "^2.1.1",
+    "astro": "^7.4.2",
+    "react": "^19.2.2",
+    "react-dom": "^19.2.2",
+    "sanity": "^6.20.0",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3"
+  }
+}

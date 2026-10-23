@@ -1,0 +1,41 @@
+---
+import { contentHref, formatDate } from '../lib/content';
+import { imageUrl } from '../lib/sanity/image';
+import type { ContentSummary } from '../lib/sanity/types';
+
+interface Props {
+  item: ContentSummary;
+  articleCount?: number;
+}
+
+const { item, articleCount } = Astro.props;
+const label = item._type === 'article' ? 'Article' : item._type === 'project' ? 'Project' : 'Series';
+const href = contentHref(item._type, item.slug);
+---
+
+<article class="content-card">
+  <a class="card-link" href={href} aria-label={`Read ${item.title}`}>
+    {item.featuredImage?.asset ? (
+      <img
+        class="card-image"
+        src={imageUrl(item.featuredImage.asset, 900)}
+        alt={item.featuredImage.alt}
+        loading="lazy"
+        width="900"
+        height="506"
+      />
+    ) : (
+      <div class="card-placeholder" aria-hidden="true"><span>{label.slice(0, 1)}</span></div>
+    )}
+    <div class="card-body">
+      <div class="card-meta">
+        <span>{label}</span>
+        {item.publishedAt && <time datetime={item.publishedAt}>{formatDate(item.publishedAt)}</time>}
+        {typeof articleCount === 'number' && <span>{articleCount} {articleCount === 1 ? 'article' : 'articles'}</span>}
+      </div>
+      <h2>{item.title}</h2>
+      <p>{item.summary}</p>
+      <span class="card-action">Explore <span aria-hidden="true">→</span></span>
+    </div>
+  </a>
+</article>
