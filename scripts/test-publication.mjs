@@ -17,14 +17,14 @@ import {
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
-  { path: '/', file: 'dist/index.html', text: 'The notebook is ready' },
-  { path: '/articles/', file: 'dist/articles/index.html', text: 'No published articles yet' },
-  { path: '/projects/', file: 'dist/projects/index.html', text: 'No published projects yet' },
-  { path: '/series/', file: 'dist/series/index.html', text: 'No published series yet' },
-  { path: '/404.html', file: 'dist/404.html', text: 'That note isn’t here.' },
+  { path: '/', file: 'dist/index.html', emptyText: 'The notebook is ready' },
+  { path: '/articles/', file: 'dist/articles/index.html', emptyText: 'No published articles yet' },
+  { path: '/projects/', file: 'dist/projects/index.html', emptyText: 'No published projects yet' },
+  { path: '/series/', file: 'dist/series/index.html', emptyText: 'No published series yet' },
+  { path: '/404.html', file: 'dist/404.html', requiredText: 'That note isn’t here.' },
 ];
 
-function assertPageMarkup(html, { path, text }) {
+function assertPageMarkup(html, { path, emptyText, requiredText }) {
   assert.match(html, /<!doctype html>/i, `${path} must be an HTML document`);
   assert.match(html, /<html lang="en">/, `${path} must declare its language`);
   assert.match(html, /<meta name="viewport"/, `${path} must set a responsive viewport`);
@@ -37,7 +37,14 @@ function assertPageMarkup(html, { path, text }) {
   for (const label of ['Articles', 'Projects', 'Series']) {
     assert.ok(html.includes(label), `${path} must include the ${label} navigation item`);
   }
-  assert.ok(html.includes(text), `${path} must render its expected empty or recovery state`);
+  if (requiredText) {
+    assert.ok(html.includes(requiredText), `${path} must render its expected recovery state`);
+  } else {
+    assert.ok(
+      html.includes(emptyText) || html.includes('class="card-grid"'),
+      `${path} must render either its empty state or published content`,
+    );
+  }
 }
 
 async function waitForServer(process, timeoutMs = 15_000) {
@@ -110,6 +117,11 @@ async function testSanityQueries() {
     const result = await client.fetch(query, { slug: 'not-a-real-slug' });
     assert.equal(result, null, 'unknown detail queries must resolve to null');
   }
+
+  assert.ok(
+    seriesBySlugQuery.includes('"articles": coalesce(') && seriesBySlugQuery.includes('[]'),
+    'series detail queries must return an empty article array when the field is missing',
+  );
 }
 
 async function testConfiguration() {

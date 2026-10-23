@@ -39,7 +39,8 @@ export const projectBySlugQuery = `*[_type == "project" && slug.current == $slug
 
 export const seriesBySlugQuery = `*[_type == "series" && slug.current == $slug && ${publicDocument}][0] {
   ${summaryFields}, seo,
-  "articles": articles[]->[_type == "article" && ${publishedDocument}] {
-    ${summaryFields}
-  }
+  "articles": coalesce(
+    articles[]->[_type == "article" && ${publishedDocument}] {${summaryFields}},
+    []
+  )
 }`;
