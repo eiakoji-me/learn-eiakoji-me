@@ -1,0 +1,15 @@
+---
+import { PortableText } from '@portabletext/astro';
+import type { PortableTextBlock } from '@portabletext/types';
+import CodeBlock from './CodeBlock.astro';
+import SanityImage from './SanityImage.astro';
+import type { BodyBlock } from '../lib/sanity/types';
+
+interface Props { value: BodyBlock[] }
+const { value } = Astro.props;
+const components = { type: { imageWithAlt: SanityImage, codeBlock: CodeBlock } };
+---
+
+<div class="prose">
+  <PortableText value={value as PortableTextBlock[]} components={components} />
+</div>

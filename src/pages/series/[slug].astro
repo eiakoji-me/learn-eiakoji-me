@@ -1,0 +1,39 @@
+---
+import type { GetStaticPaths } from 'astro';
+import EmptyState from '../../components/EmptyState.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { fetchContent, formatDate } from '../../lib/content';
+import { imageUrl } from '../../lib/sanity/image';
+import { seriesBySlugQuery, seriesSlugsQuery } from '../../lib/sanity/queries';
+import type { Series } from '../../lib/sanity/types';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const slugs = await fetchContent<string[]>(seriesSlugsQuery);
+  return slugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const series = await fetchContent<Series>(seriesBySlugQuery, { slug: slug! });
+const socialImage = series.seo?.image?.asset ? imageUrl(series.seo.image.asset, 1200) : series.featuredImage?.asset ? imageUrl(series.featuredImage.asset, 1200) : undefined;
+---
+
+<BaseLayout title={series.seo?.title ?? series.title} description={series.seo?.description ?? series.summary} image={socialImage}>
+  <header class="entry entry-header">
+    <div class="entry-meta"><span>Series</span><span>{series.articles.length} {series.articles.length === 1 ? 'article' : 'articles'}</span></div>
+    <h1>{series.title}</h1>
+    <p class="entry-summary">{series.summary}</p>
+  </header>
+  {series.featuredImage?.asset && (
+    <figure class="entry-image"><img src={imageUrl(series.featuredImage.asset, 1600)} alt={series.featuredImage.alt} width="1600" height="900" /></figure>
+  )}
+  <section class="entry" aria-labelledby="series-articles">
+    <h2 id="series-articles">In this series</h2>
+    {series.articles.length > 0 ? (
+      <ol class="series-list">
+        {series.articles.map((article) => (
+          <li><a href={`/articles/${article.slug}/`}><strong>{article.title}</strong><time datetime={article.publishedAt}>{formatDate(article.publishedAt!)}</time></a></li>
+        ))}
+      </ol>
+    ) : <EmptyState title="This series is taking shape" message="Published articles will appear here in the order chosen in Sanity." />}
+  </section>
+</BaseLayout>

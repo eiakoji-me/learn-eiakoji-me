@@ -1,0 +1,13 @@
+---
+import type { Props as PortableTextProps } from '@portabletext/astro/types';
+import { imageUrl } from '../lib/sanity/image';
+import type { SanityImage } from '../lib/sanity/types';
+
+type Props = PortableTextProps<SanityImage & { _type: 'imageWithAlt' }>;
+const { node } = Astro.props;
+---
+
+<figure>
+  <img src={imageUrl(node, 1400)} alt={node.alt} loading="lazy" width="1400" height="788" />
+  {node.caption && <figcaption>{node.caption}</figcaption>}
+</figure>

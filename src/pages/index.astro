@@ -1,0 +1,37 @@
+---
+import ContentCard from '../components/ContentCard.astro';
+import EmptyState from '../components/EmptyState.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { fetchContent } from '../lib/content';
+import { latestContentQuery } from '../lib/sanity/queries';
+import type { ContentSummary } from '../lib/sanity/types';
+
+const latest = await fetchContent<ContentSummary[]>(latestContentQuery);
+---
+
+<BaseLayout>
+  <section class="hero">
+    <div class="shell hero-grid">
+      <div>
+        <p class="eyebrow">A working notebook</p>
+        <h1>Learn deeply.<br />Build clearly.</h1>
+        <p class="hero-copy">Technical articles, project write-ups, and connected series from experiments that made something click.</p>
+      </div>
+      <aside class="hero-aside">
+        <p><strong>What lives here?</strong><br />Practical notes that preserve both the result and the reasoning behind it.</p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section shell" aria-labelledby="latest-heading">
+    <div class="section-header">
+      <h2 id="latest-heading">Latest work</h2>
+      <a href="/articles/">Browse all articles →</a>
+    </div>
+    {latest.length > 0 ? (
+      <div class="card-grid">{latest.map((item) => <ContentCard item={item} />)}</div>
+    ) : (
+      <EmptyState title="The notebook is ready" message="Published articles, projects, and series will appear here after the next content build." />
+    )}
+  </section>
+</BaseLayout>

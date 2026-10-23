@@ -1,0 +1,24 @@
+---
+const pathname = Astro.url.pathname;
+const links = [
+  { href: '/articles/', label: 'Articles' },
+  { href: '/projects/', label: 'Projects' },
+  { href: '/series/', label: 'Series' },
+];
+---
+
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="/" aria-label="Eiakoji learns home">
+      <span class="brand-mark" aria-hidden="true">e/</span>
+      <span>Eiakoji learns</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <ul>
+        {links.map(({ href, label }) => (
+          <li><a href={href} aria-current={pathname.startsWith(href) ? 'page' : undefined}>{label}</a></li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>

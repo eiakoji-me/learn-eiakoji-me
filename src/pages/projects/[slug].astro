@@ -1,0 +1,39 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import RichText from '../../components/RichText.astro';
+import { fetchContent, formatDate } from '../../lib/content';
+import { imageUrl } from '../../lib/sanity/image';
+import { projectBySlugQuery, projectSlugsQuery } from '../../lib/sanity/queries';
+import type { Project } from '../../lib/sanity/types';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const slugs = await fetchContent<string[]>(projectSlugsQuery);
+  return slugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const project = await fetchContent<Project>(projectBySlugQuery, { slug: slug! });
+const socialImage = project.seo?.image?.asset ? imageUrl(project.seo.image.asset, 1200) : project.featuredImage?.asset ? imageUrl(project.featuredImage.asset, 1200) : undefined;
+---
+
+<BaseLayout title={project.seo?.title ?? project.title} description={project.seo?.description ?? project.summary} image={socialImage}>
+  <article>
+    <header class="entry entry-header">
+      <div class="entry-meta"><span>Project</span><time datetime={project.publishedAt}>{formatDate(project.publishedAt!)}</time></div>
+      <h1>{project.title}</h1>
+      <p class="entry-summary">{project.summary}</p>
+      {project.technologies && <ul class="tags">{project.technologies.map((technology) => <li>{technology}</li>)}</ul>}
+      {(project.projectUrl || project.repositoryUrl) && (
+        <div class="entry-links">
+          {project.projectUrl && <a class="button primary" href={project.projectUrl}>Visit project ↗</a>}
+          {project.repositoryUrl && <a class="button" href={project.repositoryUrl}>View repository ↗</a>}
+        </div>
+      )}
+    </header>
+    {project.featuredImage?.asset && (
+      <figure class="entry-image"><img src={imageUrl(project.featuredImage.asset, 1600)} alt={project.featuredImage.alt} width="1600" height="900" /></figure>
+    )}
+    <div class="entry"><RichText value={project.body} /></div>
+  </article>
+</BaseLayout>

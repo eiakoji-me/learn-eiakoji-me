@@ -1,0 +1,40 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import RichText from '../../components/RichText.astro';
+import { fetchContent, formatDate } from '../../lib/content';
+import { imageUrl } from '../../lib/sanity/image';
+import { articleBySlugQuery, articleSlugsQuery } from '../../lib/sanity/queries';
+import type { Article } from '../../lib/sanity/types';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const slugs = await fetchContent<string[]>(articleSlugsQuery);
+  return slugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const article = await fetchContent<Article>(articleBySlugQuery, { slug: slug! });
+const socialImage = article.seo?.image?.asset ? imageUrl(article.seo.image.asset, 1200) : article.featuredImage?.asset ? imageUrl(article.featuredImage.asset, 1200) : undefined;
+---
+
+<BaseLayout title={article.seo?.title ?? article.title} description={article.seo?.description ?? article.summary} image={socialImage}>
+  <article>
+    <header class="entry entry-header">
+      <div class="entry-meta">
+        <span>Article</span>
+        <time datetime={article.publishedAt}>{formatDate(article.publishedAt!)}</time>
+        {article.series && <a href={`/series/${article.series.slug}/`}>Part of {article.series.title}</a>}
+      </div>
+      <h1>{article.title}</h1>
+      <p class="entry-summary">{article.summary}</p>
+      {article.topics && <ul class="tags">{article.topics.map((topic) => <li>{topic}</li>)}</ul>}
+    </header>
+    {article.featuredImage?.asset && (
+      <figure class="entry-image">
+        <img src={imageUrl(article.featuredImage.asset, 1600)} alt={article.featuredImage.alt} width="1600" height="900" />
+        {article.featuredImage.caption && <figcaption>{article.featuredImage.caption}</figcaption>}
+      </figure>
+    )}
+    <div class="entry"><RichText value={article.body} /></div>
+  </article>
+</BaseLayout>
