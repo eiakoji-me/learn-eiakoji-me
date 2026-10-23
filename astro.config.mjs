@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    site: 'https://learn.eiakoji.me',
+    site: 'https://wiki.eiakoji.me',
     output: 'static',
     integrations: [
       sanity({

@@ -1,4 +1,4 @@
-# learn.eiakoji.me
+# wiki.eiakoji.me
 
 Technical articles, project write-ups, and connected learning series published
 with Astro and Sanity.

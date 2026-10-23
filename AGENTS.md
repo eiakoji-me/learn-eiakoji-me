@@ -1,6 +1,6 @@
 # Project instructions
 
-- This repository owns the publication at `learn.eiakoji.me`; it does not own
+- This repository owns the publication at `wiki.eiakoji.me`; it does not own
   the Hugo personal site at `eiakoji.me`.
 - Use strict TypeScript and keep Sanity queries centralized under
   `src/lib/sanity/`.

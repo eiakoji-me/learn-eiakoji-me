@@ -29,7 +29,7 @@ function assertPageMarkup(html, { path, emptyText, requiredText }) {
   assert.match(html, /<html lang="en">/, `${path} must declare its language`);
   assert.match(html, /<meta name="viewport"/, `${path} must set a responsive viewport`);
   assert.match(html, /<meta name="description" content="[^"]+"/, `${path} must have a description`);
-  assert.match(html, /<link rel="canonical" href="https:\/\/learn\.eiakoji\.me\//, `${path} must have a production canonical URL`);
+  assert.match(html, /<link rel="canonical" href="https:\/\/wiki\.eiakoji\.me\//, `${path} must have a production canonical URL`);
   assert.match(html, /<meta property="og:title"/, `${path} must have social title metadata`);
   assert.match(html, /class="skip-link" href="#main-content"/, `${path} must have skip navigation`);
   assert.match(html, /<main id="main-content">/, `${path} must expose the main landmark`);
