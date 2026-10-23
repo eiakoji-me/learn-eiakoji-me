@@ -66,7 +66,8 @@ also require a slug and a publication date that is not in the future.
 | `npm run preview` | Preview the Astro production build |
 | `npm run studio` | Start Sanity Studio locally |
 | `npm run studio:build` | Validate and build Studio without deploying |
-| `npm run verify` | Run checks plus both production builds |
+| `npm run test:publication` | Exercise built routes, metadata, configuration, and live GROQ queries |
+| `npm run verify` | Run checks, both production builds, and publication integration tests |
 
 ## Netlify preparation
 

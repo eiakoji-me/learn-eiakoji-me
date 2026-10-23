@@ -10,7 +10,8 @@
     "check": "astro check",
     "studio": "sanity dev --host 0.0.0.0",
     "studio:build": "sanity build .sanity-dist",
-    "verify": "npm run check && npm run studio:build && npm run build"
+    "test:publication": "node scripts/test-publication.mjs",
+    "verify": "npm run check && npm run studio:build && npm run build && npm run test:publication"
   },
   "dependencies": {
     "@portabletext/astro": "^0.2.0",
