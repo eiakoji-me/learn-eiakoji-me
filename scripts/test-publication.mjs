@@ -20,6 +20,7 @@ import {
 } from '../src/lib/sanity/queries.ts';
 import { extractHeadings } from '../src/lib/slugify.ts';
 import { buildTopicTree, getTopicBreadcrumbs, validateTopicHierarchy } from '../src/lib/topics.ts';
+import { validateTopicParent } from '../sanity/schemaTypes/topic.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
@@ -263,6 +264,48 @@ async function testUnitBehaviors() {
   assert.equal(crumbs[2].label, 'Distributed Systems');
   assert.equal(crumbs[3].label, 'Storage Engines');
   assert.equal(crumbs[4].label, 'LSM Trees');
+
+  // 6. Test validateTopicParent in Studio schema validation (including failure and error paths)
+  const selfRefResult = await validateTopicParent({ _ref: 't-self' }, { document: { _id: 't-self' } });
+  assert.equal(selfRefResult, 'A topic cannot reference itself as its parent.');
+
+  // Transient query error must NOT fail open
+  const failingContext = {
+    document: { _id: 't-child' },
+    getClient: () => ({
+      fetch: async () => {
+        throw new Error('Sanity API connection timeout');
+      },
+    }),
+  };
+  const failResult = await validateTopicParent({ _ref: 't-parent' }, failingContext);
+  assert.ok(
+    typeof failResult === 'string' && failResult.includes('Sanity API connection timeout'),
+    'validateTopicParent must report query failure rather than failing open',
+  );
+
+  // Multi-hop cycle via client lookup
+  const cycleContext = {
+    document: { _id: 't-a' },
+    getClient: () => ({
+      fetch: async (_query, params) => {
+        if (params?.id === 't-b') return { parent: { _ref: 't-a' } };
+        return null;
+      },
+    }),
+  };
+  const cycleValResult = await validateTopicParent({ _ref: 't-b' }, cycleContext);
+  assert.equal(cycleValResult, 'Circular parent reference detected in topic hierarchy.');
+
+  // Valid acyclic hierarchy passes
+  const validContext = {
+    document: { _id: 't-leaf' },
+    getClient: () => ({
+      fetch: async () => ({ parent: undefined }),
+    }),
+  };
+  const successResult = await validateTopicParent({ _ref: 't-root' }, validContext);
+  assert.equal(successResult, true, 'valid hierarchy must pass validation');
 }
 
 async function testConfiguration() {
