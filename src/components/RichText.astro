@@ -2,12 +2,26 @@
 import { PortableText } from '@portabletext/astro';
 import type { PortableTextBlock } from '@portabletext/types';
 import CodeBlock from './CodeBlock.astro';
+import Heading2 from './Heading2.astro';
+import Heading3 from './Heading3.astro';
 import SanityImage from './SanityImage.astro';
 import type { BodyBlock } from '../lib/sanity/types';
 
-interface Props { value: BodyBlock[] }
+interface Props {
+  value: BodyBlock[];
+}
+
 const { value } = Astro.props;
-const components = { type: { imageWithAlt: SanityImage, codeBlock: CodeBlock } };
+const components = {
+  type: {
+    imageWithAlt: SanityImage,
+    codeBlock: CodeBlock,
+  },
+  block: {
+    h2: Heading2,
+    h3: Heading3,
+  },
+};
 ---
 
 <div class="prose">

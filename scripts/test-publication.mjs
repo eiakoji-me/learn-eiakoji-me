@@ -13,11 +13,16 @@ import {
   seriesBySlugQuery,
   seriesListQuery,
   seriesSlugsQuery,
+  topicBySlugQuery,
+  topicsListQuery,
+  topicSlugsQuery,
+  wikiNavQuery,
 } from '../src/lib/sanity/queries.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
   { path: '/', file: 'dist/index.html', emptyText: 'The notebook is ready' },
+  { path: '/topics/', file: 'dist/topics/index.html', emptyText: 'No published topics yet' },
   { path: '/articles/', file: 'dist/articles/index.html', emptyText: 'No published articles yet' },
   { path: '/projects/', file: 'dist/projects/index.html', emptyText: 'No published projects yet' },
   { path: '/series/', file: 'dist/series/index.html', emptyText: 'No published series yet' },
@@ -34,7 +39,7 @@ function assertPageMarkup(html, { path, emptyText, requiredText }) {
   assert.match(html, /class="skip-link" href="#main-content"/, `${path} must have skip navigation`);
   assert.match(html, /<main id="main-content">/, `${path} must expose the main landmark`);
   assert.match(html, /<nav aria-label="Primary navigation">/, `${path} must label primary navigation`);
-  for (const label of ['Articles', 'Projects', 'Series']) {
+  for (const label of ['Topics', 'Articles', 'Projects', 'Series']) {
     assert.ok(html.includes(label), `${path} must include the ${label} navigation item`);
   }
   if (requiredText) {
@@ -80,12 +85,25 @@ async function testBuiltSite() {
       assertPageMarkup(await response.text(), page);
     }
 
-    const unknown = await fetch(`${origin}/articles/not-a-real-slug/`);
-    assert.equal(unknown.status, 404, 'an unknown article slug must return HTTP 404');
-    assert.ok((await unknown.text()).includes('That note isn’t here.'), 'unknown slugs must use the recovery page');
+    const unknownArticle = await fetch(`${origin}/articles/not-a-real-slug/`);
+    assert.equal(unknownArticle.status, 404, 'an unknown article slug must return HTTP 404');
+    assert.ok((await unknownArticle.text()).includes('That note isn’t here.'), 'unknown slugs must use the recovery page');
+
+    const unknownTopic = await fetch(`${origin}/topics/not-a-real-topic/`);
+    assert.equal(unknownTopic.status, 404, 'an unknown topic slug must return HTTP 404');
+    assert.ok((await unknownTopic.text()).includes('That note isn’t here.'), 'unknown topic slugs must use the recovery page');
   } finally {
-    preview.kill('SIGTERM');
-    await new Promise((resolve) => preview.once('exit', resolve));
+    if (preview.exitCode === null) {
+      preview.kill('SIGTERM');
+      const exitPromise = new Promise((resolve) => preview.once('exit', resolve));
+      const timeout = new Promise((resolve) => setTimeout(() => {
+        if (preview.exitCode === null) {
+          try { preview.kill('SIGKILL'); } catch { /* ignore */ }
+        }
+        resolve();
+      }, 3000));
+      await Promise.race([exitPromise, timeout]);
+    }
   }
 
   assert.ok(!logs.includes('[ERROR]'), `preview server logged an error:\n${logs}`);
@@ -93,7 +111,7 @@ async function testBuiltSite() {
 
 async function testSanityQueries() {
   const requiredPublicFilter = '!(_id in path("drafts.**")) && defined(slug.current)';
-  for (const query of [latestContentQuery, articlesQuery, projectsQuery, seriesListQuery]) {
+  for (const query of [latestContentQuery, articlesQuery, projectsQuery, seriesListQuery, topicsListQuery]) {
     assert.ok(query.includes(requiredPublicFilter), 'public list queries must exclude drafts and require slugs');
   }
   for (const query of [latestContentQuery, articlesQuery, projectsQuery, articleBySlugQuery, projectBySlugQuery, seriesBySlugQuery]) {
@@ -107,13 +125,23 @@ async function testSanityQueries() {
     useCdn: false,
   });
 
-  const listQueries = [latestContentQuery, articlesQuery, projectsQuery, seriesListQuery, articleSlugsQuery, projectSlugsQuery, seriesSlugsQuery];
+  const listQueries = [
+    latestContentQuery,
+    articlesQuery,
+    projectsQuery,
+    seriesListQuery,
+    articleSlugsQuery,
+    projectSlugsQuery,
+    seriesSlugsQuery,
+    topicSlugsQuery,
+    topicsListQuery,
+  ];
   for (const query of listQueries) {
     const result = await client.fetch(query);
     assert.ok(Array.isArray(result), 'list and slug queries must return arrays');
   }
 
-  for (const query of [articleBySlugQuery, projectBySlugQuery, seriesBySlugQuery]) {
+  for (const query of [articleBySlugQuery, projectBySlugQuery, seriesBySlugQuery, topicBySlugQuery]) {
     const result = await client.fetch(query, { slug: 'not-a-real-slug' });
     assert.equal(result, null, 'unknown detail queries must resolve to null');
   }
@@ -122,10 +150,15 @@ async function testSanityQueries() {
     seriesBySlugQuery.includes('"articles": coalesce(') && seriesBySlugQuery.includes('[]'),
     'series detail queries must return an empty article array when the field is missing',
   );
+
+  const navResult = await client.fetch(wikiNavQuery);
+  assert.ok(navResult && typeof navResult === 'object', 'wikiNavQuery must return an object');
+  assert.ok(Array.isArray(navResult.topics), 'wikiNavQuery topics must be an array');
+  assert.ok(Array.isArray(navResult.series), 'wikiNavQuery series must be an array');
 }
 
 async function testConfiguration() {
-  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema] = await Promise.all([
+  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema] = await Promise.all([
     readFile('src/styles/global.css', 'utf8'),
     readFile('netlify.toml', 'utf8'),
     readFile('.gitignore', 'utf8'),
@@ -135,6 +168,7 @@ async function testConfiguration() {
     readFile('sanity/schemaTypes/project.ts', 'utf8'),
     readFile('sanity/schemaTypes/series.ts', 'utf8'),
     readFile('sanity/schemaTypes/imageWithAlt.ts', 'utf8'),
+    readFile('sanity/schemaTypes/topic.ts', 'utf8'),
   ]);
 
   assert.match(styles, /@media \(max-width: 720px\)/, 'styles must include a small-screen layout');
@@ -149,8 +183,11 @@ async function testConfiguration() {
   for (const section of ['Local setup', 'Content authoring', 'Netlify preparation', 'Verification']) {
     assert.ok(readme.includes(section), `README must document ${section}`);
   }
-  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series']) {
+  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series', 'kind', 'primaryTopic']) {
     assert.ok(articleSchema.includes(`name: '${field}'`), `article schema must define ${field}`);
+  }
+  for (const field of ['slug', 'summary', 'parent', 'domain', 'order']) {
+    assert.ok(topicSchema.includes(`name: '${field}'`), `topic schema must define ${field}`);
   }
   for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'repositoryUrl', 'projectUrl']) {
     assert.ok(projectSchema.includes(`name: '${field}'`), `project schema must define ${field}`);

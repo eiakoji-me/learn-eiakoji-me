@@ -1,0 +1,9 @@
+---
+import { slugify } from '../lib/slugify';
+
+const props = Astro.props;
+const text = props.node?.children?.map((c: any) => c.text || '').join('') || '';
+const id = slugify(text);
+---
+
+<h3 id={id}><slot /></h3>

@@ -1,0 +1,50 @@
+---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import { fetchContent } from '../../lib/content';
+import { topicsListQuery } from '../../lib/sanity/queries';
+import type { Topic } from '../../lib/sanity/types';
+
+const topics = await fetchContent<Topic[]>(topicsListQuery);
+---
+
+<WikiLayout title="Topics" description="Knowledge taxonomy across distributed systems, DSA, cloud platforms, and software engineering by Eiakoji." currentSlug="topics">
+  <div class="topic-index-page">
+    <Breadcrumbs items={[{ label: 'Topics' }]} />
+    <header class="page-heading">
+      <p class="eyebrow">Taxonomy & Domains</p>
+      <h1>Topics</h1>
+      <p>Structured technical knowledge base across systems architecture, programming languages, cloud platforms, and engineering craft.</p>
+    </header>
+
+    <section class="section" aria-label="Topic catalog">
+      {topics.length > 0 ? (
+        <div class="card-grid">
+          {topics.map((t) => (
+            <article class="content-card">
+              <a href={`/topics/${t.slug}/`} class="card-link" aria-label={`Explore ${t.title}`}>
+                <div class="card-placeholder" aria-hidden="true">
+                  <span>{t.title.slice(0, 1)}</span>
+                </div>
+                <div class="card-body">
+                  <div class="card-meta">
+                    <span>{t.domain ? t.domain.toUpperCase() : 'TOPIC'}</span>
+                    {typeof t.articleCount === 'number' && (
+                      <span>{t.articleCount} {t.articleCount === 1 ? 'entry' : 'entries'}</span>
+                    )}
+                  </div>
+                  <h2>{t.title}</h2>
+                  <p>{t.summary}</p>
+                  {t.parent && <span class="card-action">Subtopic of {t.parent.title} →</span>}
+                </div>
+              </a>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No published topics yet" message="Topics and knowledge catalogs will appear here once they are published in Sanity." />
+      )}
+    </section>
+  </div>
+</WikiLayout>

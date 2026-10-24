@@ -1,0 +1,73 @@
+---
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: BreadcrumbItem[];
+}
+
+const { items } = Astro.props;
+const breadcrumbItems: BreadcrumbItem[] = [
+  { label: 'Wiki', href: '/' },
+  ...items,
+];
+---
+
+<nav aria-label="Breadcrumb" class="breadcrumbs">
+  <ol>
+    {breadcrumbItems.map((item, index) => {
+      const isLast = index === breadcrumbItems.length - 1;
+      return (
+        <li>
+          {index > 0 && <span class="breadcrumb-separator" aria-hidden="true">/</span>}
+          {isLast || !item.href ? (
+            <span aria-current="page" class="breadcrumb-current">{item.label}</span>
+          ) : (
+            <a href={item.href} class="breadcrumb-link">{item.label}</a>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</nav>
+
+<style>
+  .breadcrumbs {
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .breadcrumbs li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .breadcrumb-separator {
+    color: var(--line);
+    font-weight: 300;
+  }
+  .breadcrumb-link {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 140ms ease;
+  }
+  .breadcrumb-link:hover {
+    color: var(--accent-dark);
+    text-decoration: underline;
+  }
+  .breadcrumb-current {
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>

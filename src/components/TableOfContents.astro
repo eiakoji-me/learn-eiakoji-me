@@ -1,0 +1,64 @@
+---
+import type { HeadingItem } from '../lib/slugify';
+
+interface Props {
+  headings: HeadingItem[];
+}
+
+const { headings } = Astro.props;
+---
+
+{headings.length > 0 && (
+  <nav aria-label="Table of contents" class="toc-widget">
+    <div class="toc-header">On this page</div>
+    <ul class="toc-list">
+      {headings.map((heading) => (
+        <li class={`toc-item depth-${heading.depth}`}>
+          <a href={`#${heading.slug}`}>{heading.text}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<style>
+  .toc-widget {
+    margin-bottom: 28px;
+    font-size: 0.85rem;
+  }
+  .toc-header {
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .toc-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-left: 1px solid var(--line);
+  }
+  .toc-item {
+    margin: 0;
+  }
+  .toc-item a {
+    display: block;
+    padding: 4px 0 4px 14px;
+    color: var(--muted);
+    text-decoration: none;
+    line-height: 1.4;
+    transition: color 140ms ease, border-color 140ms ease;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+  }
+  .toc-item.depth-3 a {
+    padding-left: 24px;
+    font-size: 0.82rem;
+  }
+  .toc-item a:hover {
+    color: var(--accent-dark);
+    border-left-color: var(--accent);
+  }
+</style>

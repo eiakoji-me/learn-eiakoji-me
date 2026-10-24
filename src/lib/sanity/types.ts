@@ -13,14 +13,22 @@ export interface SeoFields {
   image?: SanityImage;
 }
 
+export type ContentKind = 'deep-dive' | 'workshop' | 'guide' | 'reading-notes' | 'reference';
+
 export interface ContentSummary {
   _id: string;
-  _type: 'article' | 'project' | 'series';
+  _type: 'article' | 'project' | 'series' | 'topic';
   title: string;
   slug: string;
   summary: string;
   publishedAt?: string;
   featuredImage?: SanityImage;
+  kind?: ContentKind;
+  primaryTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+  };
 }
 
 export interface CodeBlock {
@@ -33,11 +41,52 @@ export interface CodeBlock {
 
 export type BodyBlock = PortableTextBlock | SanityImage | CodeBlock;
 
+export interface Topic {
+  _id: string;
+  _type: 'topic';
+  title: string;
+  slug: string;
+  domain?: string;
+  summary: string;
+  description?: BodyBlock[];
+  icon?: string;
+  order?: number;
+  featured?: boolean;
+  parent?: {
+    _id: string;
+    title: string;
+    slug: string;
+  };
+  articleCount?: number;
+}
+
 export interface Article extends ContentSummary {
   _type: 'article';
   body: BodyBlock[];
+  kind?: ContentKind;
+  primaryTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+  };
+  relatedTopics?: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+  }>;
+  difficulty?: 'Fundamentals' | 'Intermediate' | 'Advanced';
   topics?: string[];
-  series?: Pick<ContentSummary, '_id' | 'title' | 'slug'>;
+  series?: {
+    _id: string;
+    title: string;
+    slug: string;
+    articles?: ContentSummary[];
+  };
+  repositoryUrl?: string;
+  demoUrl?: string;
+  technologies?: string[];
+  bookAuthor?: string;
+  referenceUrl?: string;
   seo?: SeoFields;
 }
 
@@ -53,5 +102,10 @@ export interface Project extends ContentSummary {
 export interface Series extends ContentSummary {
   _type: 'series';
   articles: ContentSummary[];
+  primaryTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+  };
   seo?: SeoFields;
 }

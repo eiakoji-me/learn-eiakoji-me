@@ -1,0 +1,65 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import LeftNav from '../components/LeftNav.astro';
+import { fetchContent } from '../lib/content';
+import { wikiNavQuery } from '../lib/sanity/queries';
+import type { Topic, Series } from '../lib/sanity/types';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  currentSlug?: string;
+}
+
+const {
+  title,
+  description = 'Technical knowledge base, architecture patterns, and engineering notes by Eiakoji.',
+  image,
+  currentSlug,
+} = Astro.props;
+
+const pageTitle = title ? `${title} · Eiakoji wiki` : 'Eiakoji wiki';
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://wiki.eiakoji.me');
+
+let navData = { topics: [] as Topic[], series: [] as Series[] };
+try {
+  navData = await fetchContent<{ topics: Topic[]; series: Series[] }>(wikiNavQuery);
+} catch {
+  // Fallback to empty lists if query returns empty during static build
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <SiteHeader />
+    <div class="wiki-shell">
+      <LeftNav topics={navData?.topics} series={navData?.series} currentSlug={currentSlug} />
+      <main id="main-content">
+        <div class="wiki-main">
+          <slot />
+        </div>
+      </main>
+      <slot name="right-rail" />
+    </div>
+    <SiteFooter />
+  </body>
+</html>

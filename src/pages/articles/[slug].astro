@@ -1,11 +1,14 @@
 ---
 import type { GetStaticPaths } from 'astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import RightRail from '../../components/RightRail.astro';
 import RichText from '../../components/RichText.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent, formatDate } from '../../lib/content';
 import { imageUrl } from '../../lib/sanity/image';
 import { articleBySlugQuery, articleSlugsQuery } from '../../lib/sanity/queries';
 import type { Article } from '../../lib/sanity/types';
+import { extractHeadings } from '../../lib/slugify';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const slugs = await fetchContent<string[]>(articleSlugsQuery);
@@ -14,27 +17,307 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 const { slug } = Astro.params;
 const article = await fetchContent<Article>(articleBySlugQuery, { slug: slug! });
-const socialImage = article.seo?.image?.asset ? imageUrl(article.seo.image.asset, 1200) : article.featuredImage?.asset ? imageUrl(article.featuredImage.asset, 1200) : undefined;
+const socialImage = article.seo?.image?.asset
+  ? imageUrl(article.seo.image.asset, 1200)
+  : article.featuredImage?.asset
+    ? imageUrl(article.featuredImage.asset, 1200)
+    : undefined;
+
+const headings = extractHeadings(article.body);
+
+const kindLabels: Record<string, string> = {
+  'deep-dive': 'Deep Dive',
+  workshop: 'Workshop',
+  guide: 'Guide',
+  'reading-notes': 'Reading Notes',
+  reference: 'Reference',
+};
+const kindLabel = (article.kind && kindLabels[article.kind]) || 'Article';
+
+const breadcrumbs = [
+  ...(article.primaryTopic
+    ? [
+        { label: 'Topics', href: '/topics/' },
+        { label: article.primaryTopic.title, href: `/topics/${article.primaryTopic.slug}/` },
+      ]
+    : [{ label: 'Articles', href: '/articles/' }]),
+  { label: article.title },
+];
 ---
 
-<BaseLayout title={article.seo?.title ?? article.title} description={article.seo?.description ?? article.summary} image={socialImage}>
-  <article>
-    <header class="entry entry-header">
+<WikiLayout
+  title={article.seo?.title ?? article.title}
+  description={article.seo?.description ?? article.summary}
+  image={socialImage}
+  currentSlug={article.primaryTopic?.slug ?? 'articles'}
+>
+  <article class="wiki-article">
+    <Breadcrumbs items={breadcrumbs} />
+
+    <header class="entry-header">
       <div class="entry-meta">
-        <span>Article</span>
+        <span class="kind-badge">{kindLabel}</span>
+        {article.difficulty && <span class="difficulty-badge">{article.difficulty}</span>}
         <time datetime={article.publishedAt}>{formatDate(article.publishedAt!)}</time>
-        {article.series && <a href={`/series/${article.series.slug}/`}>Part of {article.series.title}</a>}
+        {article.series && (
+          <a href={`/series/${article.series.slug}/`} class="series-badge">
+            Part of {article.series.title}
+          </a>
+        )}
       </div>
+
       <h1>{article.title}</h1>
       <p class="entry-summary">{article.summary}</p>
-      {article.topics && <ul class="tags">{article.topics.map((topic) => <li>{topic}</li>)}</ul>}
+
+      {article.primaryTopic && (
+        <div class="entry-taxonomy">
+          <span class="tax-label">Topic:</span>
+          <a href={`/topics/${article.primaryTopic.slug}/`} class="primary-topic-link">
+            {article.primaryTopic.title}
+          </a>
+          {article.relatedTopics && article.relatedTopics.length > 0 && (
+            <>
+              <span class="tax-separator">·</span>
+              <span class="tax-label">Related:</span>
+              {article.relatedTopics.map((rel) => (
+                <a href={`/topics/${rel.slug}/`} class="related-topic-link">
+                  {rel.title}
+                </a>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {(article.repositoryUrl || article.demoUrl || (article.technologies && article.technologies.length > 0)) && (
+        <div class="workshop-callout">
+          <div class="workshop-links">
+            {article.repositoryUrl && (
+              <a href={article.repositoryUrl} target="_blank" rel="noopener noreferrer" class="button secondary">
+                GitHub Repository ↗
+              </a>
+            )}
+            {article.demoUrl && (
+              <a href={article.demoUrl} target="_blank" rel="noopener noreferrer" class="button primary">
+                Live Showcase ↗
+              </a>
+            )}
+          </div>
+          {article.technologies && article.technologies.length > 0 && (
+            <ul class="tech-tags">
+              {article.technologies.map((tech) => (
+                <li>{tech}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {article.bookAuthor && (
+        <div class="book-callout">
+          <p>
+            <strong>Author:</strong> {article.bookAuthor}
+            {article.referenceUrl && (
+              <span> · <a href={article.referenceUrl} target="_blank" rel="noopener noreferrer">Source Reference ↗</a></span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {article.topics && article.topics.length > 0 && (
+        <ul class="tags">
+          {article.topics.map((topic) => (
+            <li>{topic}</li>
+          ))}
+        </ul>
+      )}
     </header>
+
     {article.featuredImage?.asset && (
       <figure class="entry-image">
-        <img src={imageUrl(article.featuredImage.asset, 1600)} alt={article.featuredImage.alt} width="1600" height="900" />
+        <img
+          src={imageUrl(article.featuredImage.asset, 1600)}
+          alt={article.featuredImage.alt}
+          width="1600"
+          height="900"
+        />
         {article.featuredImage.caption && <figcaption>{article.featuredImage.caption}</figcaption>}
       </figure>
     )}
-    <div class="entry"><RichText value={article.body} /></div>
+
+    <div class="entry-body">
+      <RichText value={article.body} />
+    </div>
+
+    {article.series?.articles && article.series.articles.length > 1 && (
+      <nav class="series-pager" aria-label="Series navigation">
+        <div class="pager-title">Continue reading: {article.series.title}</div>
+        <div class="pager-grid">
+          {(() => {
+            const idx = article.series!.articles!.findIndex((a) => a.slug === article.slug);
+            const prev = idx > 0 ? article.series!.articles![idx - 1] : null;
+            const next = idx >= 0 && idx < article.series!.articles!.length - 1 ? article.series!.articles![idx + 1] : null;
+            return (
+              <>
+                {prev ? (
+                  <a href={`/articles/${prev.slug}/`} class="pager-item prev">
+                    <span class="dir">← Previous article</span>
+                    <span class="label">{prev.title}</span>
+                  </a>
+                ) : <div />}
+                {next ? (
+                  <a href={`/articles/${next.slug}/`} class="pager-item next">
+                    <span class="dir">Next article →</span>
+                    <span class="label">{next.title}</span>
+                  </a>
+                ) : <div />}
+              </>
+            );
+          })()}
+        </div>
+      </nav>
+    )}
   </article>
-</BaseLayout>
+
+  <RightRail headings={headings} article={article} slot="right-rail" />
+</WikiLayout>
+
+<style>
+  .wiki-article {
+    width: 100%;
+    max-width: 820px;
+  }
+  .kind-badge {
+    padding: 3px 8px;
+    background: var(--forest);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 3px;
+  }
+  .difficulty-badge {
+    padding: 3px 8px;
+    background: var(--mint);
+    color: var(--forest);
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 3px;
+  }
+  .entry-taxonomy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    font-size: 0.88rem;
+  }
+  .tax-label {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .primary-topic-link {
+    font-weight: 700;
+    color: var(--forest);
+    text-decoration: none;
+  }
+  .primary-topic-link:hover, .related-topic-link:hover {
+    text-decoration: underline;
+  }
+  .related-topic-link {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .tax-separator {
+    color: var(--line);
+  }
+  .workshop-callout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .workshop-links {
+    display: flex;
+    gap: 10px;
+  }
+  .tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .tech-tags li {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--muted);
+  }
+  .book-callout {
+    padding: 12px 18px;
+    margin-top: 20px;
+    background: var(--mint);
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  .book-callout p {
+    margin: 0;
+  }
+  .series-pager {
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .pager-title {
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .pager-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .pager-item {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: border-color 140ms ease;
+  }
+  .pager-item:hover {
+    border-color: var(--accent);
+  }
+  .pager-item.next {
+    text-align: right;
+  }
+  .pager-item .dir {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin-bottom: 4px;
+  }
+  .pager-item .label {
+    font-family: Georgia, serif;
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+</style>
