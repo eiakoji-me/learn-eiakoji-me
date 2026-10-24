@@ -24,12 +24,7 @@ const {
 const pageTitle = title ? `${title} · Eiakoji wiki` : 'Eiakoji wiki';
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://wiki.eiakoji.me');
 
-let navData = { topics: [] as Topic[], series: [] as Series[] };
-try {
-  navData = await fetchContent<{ topics: Topic[]; series: Series[] }>(wikiNavQuery);
-} catch {
-  // Fallback to empty lists if query returns empty during static build
-}
+const navData = await fetchContent<{ topics: Topic[]; series: Series[] }>(wikiNavQuery);
 ---
 
 <!doctype html>

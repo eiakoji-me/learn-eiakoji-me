@@ -1,7 +1,8 @@
 ---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ContentCard from '../../components/ContentCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent } from '../../lib/content';
 import { articlesQuery } from '../../lib/sanity/queries';
 import type { ContentSummary } from '../../lib/sanity/types';
@@ -9,15 +10,27 @@ import type { ContentSummary } from '../../lib/sanity/types';
 const articles = await fetchContent<ContentSummary[]>(articlesQuery);
 ---
 
-<BaseLayout title="Articles" description="Technical articles and practical notes by Eiakoji.">
-  <header class="page-heading shell">
-    <p class="eyebrow">Ideas in detail</p>
-    <h1>Articles</h1>
-    <p>Technical explanations, design decisions, and lessons worth carrying into the next build.</p>
-  </header>
-  <section class="section shell" aria-label="Published articles">
-    {articles.length > 0 ? <div class="card-grid">{articles.map((item) => <ContentCard item={item} />)}</div> : (
-      <EmptyState title="No published articles yet" message="The first article will appear here after it is published in Sanity and the site rebuilds." />
-    )}
-  </section>
-</BaseLayout>
+<WikiLayout title="Articles & Notes" description="Technical articles, deep dives, workshops, and practical notes by Eiakoji." currentSlug="articles">
+  <div class="articles-index-page">
+    <Breadcrumbs items={[{ label: 'Articles & Notes' }]} />
+    <header class="page-heading">
+      <p class="eyebrow">Ideas in detail</p>
+      <h1>Articles & Notes</h1>
+      <p>Technical explanations, design decisions, and lessons worth carrying into the next build.</p>
+    </header>
+    <section class="section" aria-label="Published articles">
+      {articles.length > 0 ? (
+        <div class="card-grid">
+          {articles.map((item) => (
+            <ContentCard item={item} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No published articles yet"
+          message="The first article will appear here after it is published in Sanity and the site rebuilds."
+        />
+      )}
+    </section>
+  </div>
+</WikiLayout>

@@ -24,21 +24,30 @@ export const article = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
-      name: 'kind',
-      title: 'Content Format / Kind',
+      name: 'format',
+      title: 'Content Format',
       type: 'string',
-      description: 'The technical format of this entry.',
-      initialValue: 'deep-dive',
+      description: 'The technical publication format of this entry.',
+      initialValue: 'article',
       options: {
         list: [
-          { title: 'Deep Dive (Architecture, Patterns, Concepts)', value: 'deep-dive' },
-          { title: 'Workshop / Showcase (Hands-on Labs, Projects)', value: 'workshop' },
-          { title: 'Guide (Knowledge Walkthroughs, Practices)', value: 'guide' },
-          { title: 'Reading Notes (Recommended Books, Literature)', value: 'reading-notes' },
-          { title: 'Reference (Cheatsheets, Curated Lists)', value: 'reference' },
+          { title: 'Article / Deep Dive (Architecture, Patterns, Concepts)', value: 'article' },
+          { title: 'Tutorial (Step-by-step Implementation Guide)', value: 'tutorial' },
+          { title: 'Workshop (Hands-on Labs, Guided Builds)', value: 'workshop' },
+          { title: 'Case Study (Production Architecture, Post-Mortems)', value: 'case-study' },
+          { title: 'Showcase (Works Portfolio, Open-Source Demos)', value: 'showcase' },
+          { title: 'Reading Note (Recommended Books, Literature Reviews)', value: 'reading-note' },
+          { title: 'Reference (Cheatsheets, Curated Catalogs)', value: 'reference' },
         ],
       },
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'kind',
+      title: 'Legacy Kind',
+      type: 'string',
+      hidden: true,
+      description: 'Maintained for backward compatibility.',
     }),
     defineField({
       name: 'summary',
@@ -62,7 +71,7 @@ export const article = defineType({
       type: 'reference',
       to: [{ type: 'topic' }],
       fieldset: 'editorial',
-      description: 'The primary topic this entry belongs to.',
+      description: 'The primary topic / domain this entry belongs to.',
     }),
     defineField({
       name: 'relatedTopics',
@@ -88,11 +97,12 @@ export const article = defineType({
     }),
     defineField({
       name: 'series',
-      title: 'Series / Learning Path',
+      title: 'Series (Deprecated — Managed by Series document)',
       type: 'reference',
       to: [{ type: 'series' }],
       fieldset: 'editorial',
-      description: 'Optional. Add this entry to an ordered learning path.',
+      hidden: true,
+      description: 'Series membership is governed exclusively by the Series document.',
     }),
     defineField({
       name: 'topics',
@@ -158,11 +168,13 @@ export const article = defineType({
       title: 'title',
       subtitle: 'summary',
       media: 'featuredImage',
+      format: 'format',
       kind: 'kind',
       topicTitle: 'primaryTopic.title',
     },
-    prepare({ title, subtitle, media, kind, topicTitle }) {
-      const badges = [kind, topicTitle].filter(Boolean).join(' · ');
+    prepare({ title, subtitle, media, format, kind, topicTitle }) {
+      const activeFormat = format || kind || 'article';
+      const badges = [activeFormat, topicTitle].filter(Boolean).join(' · ');
       return {
         title,
         subtitle: badges ? `[${badges}] ${subtitle ?? ''}` : subtitle,

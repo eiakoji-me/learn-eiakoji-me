@@ -13,7 +13,14 @@ export interface SeoFields {
   image?: SanityImage;
 }
 
-export type ContentKind = 'deep-dive' | 'workshop' | 'guide' | 'reading-notes' | 'reference';
+export type ContentFormat =
+  | 'article'
+  | 'tutorial'
+  | 'workshop'
+  | 'case-study'
+  | 'showcase'
+  | 'reading-note'
+  | 'reference';
 
 export interface ContentSummary {
   _id: string;
@@ -23,7 +30,8 @@ export interface ContentSummary {
   summary: string;
   publishedAt?: string;
   featuredImage?: SanityImage;
-  kind?: ContentKind;
+  format?: ContentFormat;
+  kind?: string;
   primaryTopic?: {
     _id: string;
     title: string;
@@ -63,7 +71,8 @@ export interface Topic {
 export interface Article extends ContentSummary {
   _type: 'article';
   body: BodyBlock[];
-  kind?: ContentKind;
+  format?: ContentFormat;
+  kind?: string;
   primaryTopic?: {
     _id: string;
     title: string;

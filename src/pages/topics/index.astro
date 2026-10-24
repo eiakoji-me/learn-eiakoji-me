@@ -5,41 +5,79 @@ import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent } from '../../lib/content';
 import { topicsListQuery } from '../../lib/sanity/queries';
 import type { Topic } from '../../lib/sanity/types';
+import { buildTopicTree, type TopicNode } from '../../lib/topics';
 
 const topics = await fetchContent<Topic[]>(topicsListQuery);
+const tree = buildTopicTree(topics);
+const rootTopics = tree.rootTopics;
 ---
 
 <WikiLayout title="Topics" description="Knowledge taxonomy across distributed systems, DSA, cloud platforms, and software engineering by Eiakoji." currentSlug="topics">
   <div class="topic-index-page">
     <Breadcrumbs items={[{ label: 'Topics' }]} />
     <header class="page-heading">
-      <p class="eyebrow">Taxonomy & Domains</p>
+      <p class="eyebrow">Taxonomy & Knowledge Domains</p>
       <h1>Topics</h1>
       <p>Structured technical knowledge base across systems architecture, programming languages, cloud platforms, and engineering craft.</p>
     </header>
 
     <section class="section" aria-label="Topic catalog">
-      {topics.length > 0 ? (
-        <div class="card-grid">
-          {topics.map((t) => (
-            <article class="content-card">
-              <a href={`/topics/${t.slug}/`} class="card-link" aria-label={`Explore ${t.title}`}>
-                <div class="card-placeholder" aria-hidden="true">
-                  <span>{t.title.slice(0, 1)}</span>
+      {rootTopics.length > 0 ? (
+        <div class="domains-container">
+          {rootTopics.map((rootNode: TopicNode) => (
+            <div class="domain-group">
+              <div class="domain-header">
+                <div>
+                  <h2 class="domain-title">
+                    <a href={`/topics/${rootNode.topic.slug}/`}>{rootNode.topic.title}</a>
+                  </h2>
+                  <p class="domain-summary">{rootNode.topic.summary}</p>
                 </div>
-                <div class="card-body">
-                  <div class="card-meta">
-                    <span>{t.domain ? t.domain.toUpperCase() : 'TOPIC'}</span>
-                    {typeof t.articleCount === 'number' && (
-                      <span>{t.articleCount} {t.articleCount === 1 ? 'entry' : 'entries'}</span>
-                    )}
-                  </div>
-                  <h2>{t.title}</h2>
-                  <p>{t.summary}</p>
-                  {t.parent && <span class="card-action">Subtopic of {t.parent.title} →</span>}
+                <div class="domain-meta">
+                  <span class="rollup-badge">
+                    {rootNode.rollupArticleCount} {rootNode.rollupArticleCount === 1 ? 'entry' : 'entries'}
+                  </span>
                 </div>
-              </a>
-            </article>
+              </div>
+
+              <div class="card-grid">
+                <article class="content-card domain-main-card">
+                  <a href={`/topics/${rootNode.topic.slug}/`} class="card-link" aria-label={`Explore ${rootNode.topic.title}`}>
+                    <div class="card-placeholder" aria-hidden="true">
+                      <span>{rootNode.topic.title.slice(0, 1)}</span>
+                    </div>
+                    <div class="card-body">
+                      <div class="card-meta">
+                        <span>Domain Overview</span>
+                        <span>{rootNode.directArticleCount} direct</span>
+                      </div>
+                      <h3>{rootNode.topic.title} Overview</h3>
+                      <p>{rootNode.topic.summary}</p>
+                      <span class="card-action">Explore Domain →</span>
+                    </div>
+                  </a>
+                </article>
+
+                {rootNode.children.map((childNode: TopicNode) => (
+                  <article class="content-card subtopic-card">
+                    <a href={`/topics/${childNode.topic.slug}/`} class="card-link" aria-label={`Explore ${childNode.topic.title}`}>
+                      <div class="card-placeholder" aria-hidden="true">
+                        <span>{childNode.topic.title.slice(0, 1)}</span>
+                      </div>
+                      <div class="card-body">
+                        <div class="card-meta">
+                          <span>Subtopic</span>
+                          <span>{childNode.rollupArticleCount} {childNode.rollupArticleCount === 1 ? 'entry' : 'entries'}</span>
+                        </div>
+                        <h3>{childNode.topic.title}</h3>
+                        <p>{childNode.topic.summary}</p>
+                        <span class="card-action">View Topic Hub →</span>
+                      </div>
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (
@@ -48,3 +86,50 @@ const topics = await fetchContent<Topic[]>(topicsListQuery);
     </section>
   </div>
 </WikiLayout>
+
+<style>
+  .domains-container {
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+  .domain-group {
+    border-top: 2px solid var(--forest);
+    padding-top: 24px;
+  }
+  .domain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .domain-title {
+    margin: 0 0 6px;
+    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  }
+  .domain-title a {
+    text-decoration: none;
+    color: var(--forest);
+  }
+  .domain-title a:hover {
+    text-decoration: underline;
+  }
+  .domain-summary {
+    margin: 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 640px;
+  }
+  .rollup-badge {
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    background: var(--mint);
+    color: var(--forest);
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+</style>

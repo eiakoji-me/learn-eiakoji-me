@@ -1,5 +1,6 @@
 ---
 import type { Topic, Series } from '../lib/sanity/types';
+import { buildTopicTree, type TopicNode } from '../lib/topics';
 
 interface Props {
   topics?: Topic[];
@@ -9,17 +10,8 @@ interface Props {
 
 const { topics = [], series = [], currentSlug } = Astro.props;
 
-// Group topics: top-level vs children
-const topLevelTopics = topics.filter((t) => !t.parent);
-const childTopicsByParentId = new Map<string, Topic[]>();
-
-for (const t of topics) {
-  if (t.parent?._id) {
-    const existing = childTopicsByParentId.get(t.parent._id) ?? [];
-    existing.push(t);
-    childTopicsByParentId.set(t.parent._id, existing);
-  }
-}
+const tree = buildTopicTree(topics);
+const rootTopics = tree.rootTopics;
 ---
 
 <aside class="wiki-left-nav" aria-label="Knowledge navigation">
@@ -40,33 +32,49 @@ for (const t of topics) {
         </ul>
       </div>
 
-      {topLevelTopics.length > 0 && (
+      {rootTopics.length > 0 && (
         <div class="nav-section">
-          <div class="nav-section-title">Topics</div>
+          <div class="nav-section-title">Topics & Domains</div>
           <ul class="topic-tree">
-            {topLevelTopics.map((topTopic) => {
-              const children = childTopicsByParentId.get(topTopic._id) ?? [];
-              const isCurrent = currentSlug === topTopic.slug;
+            {rootTopics.map((rootNode: TopicNode) => {
+              const isCurrent = currentSlug === rootNode.topic.slug;
               return (
                 <li class="topic-node">
-                  <a href={`/topics/${topTopic.slug}/`} class={`topic-link ${isCurrent ? 'active' : ''}`}>
-                    <span class="topic-title">{topTopic.title}</span>
-                    {typeof topTopic.articleCount === 'number' && topTopic.articleCount > 0 && (
-                      <span class="count-badge">{topTopic.articleCount}</span>
+                  <a href={`/topics/${rootNode.topic.slug}/`} class={`topic-link ${isCurrent ? 'active' : ''}`}>
+                    <span class="topic-title">{rootNode.topic.title}</span>
+                    {rootNode.rollupArticleCount > 0 && (
+                      <span class="count-badge">{rootNode.rollupArticleCount}</span>
                     )}
                   </a>
-                  {children.length > 0 && (
+                  {rootNode.children.length > 0 && (
                     <ul class="subtopic-tree">
-                      {children.map((subTopic) => {
-                        const isSubCurrent = currentSlug === subTopic.slug;
+                      {rootNode.children.map((childNode: TopicNode) => {
+                        const isChildCurrent = currentSlug === childNode.topic.slug;
                         return (
-                          <li>
-                            <a href={`/topics/${subTopic.slug}/`} class={`subtopic-link ${isSubCurrent ? 'active' : ''}`}>
-                              <span>{subTopic.title}</span>
-                              {typeof subTopic.articleCount === 'number' && subTopic.articleCount > 0 && (
-                                <span class="count-badge">{subTopic.articleCount}</span>
+                          <li class="subtopic-node">
+                            <a href={`/topics/${childNode.topic.slug}/`} class={`subtopic-link ${isChildCurrent ? 'active' : ''}`}>
+                              <span>{childNode.topic.title}</span>
+                              {childNode.rollupArticleCount > 0 && (
+                                <span class="count-badge">{childNode.rollupArticleCount}</span>
                               )}
                             </a>
+                            {childNode.children.length > 0 && (
+                              <ul class="nested-subtopic-tree">
+                                {childNode.children.map((grandChildNode: TopicNode) => {
+                                  const isGrandChildCurrent = currentSlug === grandChildNode.topic.slug;
+                                  return (
+                                    <li>
+                                      <a href={`/topics/${grandChildNode.topic.slug}/`} class={`nested-subtopic-link ${isGrandChildCurrent ? 'active' : ''}`}>
+                                        <span>{grandChildNode.topic.title}</span>
+                                        {grandChildNode.rollupArticleCount > 0 && (
+                                          <span class="count-badge">{grandChildNode.rollupArticleCount}</span>
+                                        )}
+                                      </a>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
                           </li>
                         );
                       })}
@@ -139,15 +147,15 @@ for (const t of topics) {
     letter-spacing: 0.1em;
     color: var(--muted);
   }
-  .nav-links-list, .topic-tree, .subtopic-tree {
+  .nav-links-list, .topic-tree, .subtopic-tree, .nested-subtopic-tree {
     list-style: none;
     padding: 0;
     margin: 0;
   }
-  .nav-links-list li, .topic-node {
+  .nav-links-list li, .topic-node, .subtopic-node {
     margin-bottom: 4px;
   }
-  .nav-links-list a, .topic-link, .subtopic-link {
+  .nav-links-list a, .topic-link, .subtopic-link, .nested-subtopic-link {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -158,11 +166,11 @@ for (const t of topics) {
     line-height: 1.35;
     transition: background 120ms ease, color 120ms ease;
   }
-  .nav-links-list a:hover, .topic-link:hover, .subtopic-link:hover {
+  .nav-links-list a:hover, .topic-link:hover, .subtopic-link:hover, .nested-subtopic-link:hover {
     background: var(--mint);
     color: var(--forest);
   }
-  .nav-links-list a.active, .topic-link.active, .subtopic-link.active {
+  .nav-links-list a.active, .topic-link.active, .subtopic-link.active, .nested-subtopic-link.active {
     background: var(--mint);
     color: var(--accent-dark);
     font-weight: 700;
@@ -172,10 +180,20 @@ for (const t of topics) {
     border-left: 1px solid var(--line);
     padding-left: 6px;
   }
+  .nested-subtopic-tree {
+    margin: 4px 0 6px 12px;
+    border-left: 1px dashed var(--line);
+    padding-left: 6px;
+  }
   .subtopic-link {
     font-size: 0.82rem;
     color: var(--muted);
     padding: 4px 8px;
+  }
+  .nested-subtopic-link {
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding: 3px 6px;
   }
   .count-badge {
     font-size: 0.7rem;

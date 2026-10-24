@@ -6,9 +6,10 @@ import RichText from '../../components/RichText.astro';
 import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent, formatDate } from '../../lib/content';
 import { imageUrl } from '../../lib/sanity/image';
-import { articleBySlugQuery, articleSlugsQuery } from '../../lib/sanity/queries';
-import type { Article } from '../../lib/sanity/types';
+import { articleBySlugQuery, articleSlugsQuery, topicsListQuery } from '../../lib/sanity/queries';
+import type { Article, Topic } from '../../lib/sanity/types';
 import { extractHeadings } from '../../lib/slugify';
+import { buildTopicTree, getTopicBreadcrumbs } from '../../lib/topics';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const slugs = await fetchContent<string[]>(articleSlugsQuery);
@@ -16,7 +17,11 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 const { slug } = Astro.params;
-const article = await fetchContent<Article>(articleBySlugQuery, { slug: slug! });
+const [article, allTopics] = await Promise.all([
+  fetchContent<Article>(articleBySlugQuery, { slug: slug! }),
+  fetchContent<Topic[]>(topicsListQuery),
+]);
+
 const socialImage = article.seo?.image?.asset
   ? imageUrl(article.seo.image.asset, 1200)
   : article.featuredImage?.asset
@@ -25,24 +30,27 @@ const socialImage = article.seo?.image?.asset
 
 const headings = extractHeadings(article.body);
 
-const kindLabels: Record<string, string> = {
+const formatLabels: Record<string, string> = {
+  article: 'Deep Dive',
   'deep-dive': 'Deep Dive',
+  tutorial: 'Tutorial',
   workshop: 'Workshop',
-  guide: 'Guide',
-  'reading-notes': 'Reading Notes',
+  'case-study': 'Case Study',
+  showcase: 'Showcase',
+  'reading-note': 'Reading Note',
+  'reading-notes': 'Reading Note',
   reference: 'Reference',
 };
-const kindLabel = (article.kind && kindLabels[article.kind]) || 'Article';
+const activeFormat = article.format || article.kind || 'article';
+const formatLabel = formatLabels[activeFormat] || 'Article';
 
-const breadcrumbs = [
-  ...(article.primaryTopic
-    ? [
-        { label: 'Topics', href: '/topics/' },
-        { label: article.primaryTopic.title, href: `/topics/${article.primaryTopic.slug}/` },
-      ]
-    : [{ label: 'Articles', href: '/articles/' }]),
-  { label: article.title },
-];
+const tree = buildTopicTree(allTopics);
+let breadcrumbs = [{ label: 'Articles', href: '/articles/' }, { label: article.title }];
+
+if (article.primaryTopic?.slug) {
+  const topicCrumbs = getTopicBreadcrumbs(article.primaryTopic.slug, tree);
+  breadcrumbs = [...topicCrumbs, { label: article.title }];
+}
 ---
 
 <WikiLayout
@@ -56,7 +64,7 @@ const breadcrumbs = [
 
     <header class="entry-header">
       <div class="entry-meta">
-        <span class="kind-badge">{kindLabel}</span>
+        <span class="kind-badge">{formatLabel}</span>
         {article.difficulty && <span class="difficulty-badge">{article.difficulty}</span>}
         <time datetime={article.publishedAt}>{formatDate(article.publishedAt!)}</time>
         {article.series && (

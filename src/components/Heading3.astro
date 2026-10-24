@@ -1,9 +1,10 @@
 ---
-import { slugify } from '../lib/slugify';
+import { getRegisteredHeadingSlug } from '../lib/slugify';
 
 const props = Astro.props;
+const key = props.node?._key;
 const text = props.node?.children?.map((c: any) => c.text || '').join('') || '';
-const id = slugify(text);
+const id = getRegisteredHeadingSlug(key, text);
 ---
 
 <h3 id={id}><slot /></h3>

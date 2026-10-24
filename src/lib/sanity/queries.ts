@@ -9,7 +9,8 @@ const summaryFields = `
   summary,
   publishedAt,
   featuredImage,
-  kind,
+  format,
+  "kind": coalesce(format, kind),
   primaryTopic->{_id, title, "slug": slug.current}
 `;
 
@@ -36,7 +37,6 @@ export const topicsListQuery = `*[_type == "topic" && ${publicDocument}] | order
   _type,
   title,
   "slug": slug.current,
-  domain,
   summary,
   icon,
   order,
@@ -50,7 +50,6 @@ export const topicBySlugQuery = `*[_type == "topic" && slug.current == $slug && 
   _type,
   title,
   "slug": slug.current,
-  domain,
   summary,
   description,
   icon,
@@ -73,7 +72,8 @@ export const topicBySlugQuery = `*[_type == "topic" && slug.current == $slug && 
 export const articleBySlugQuery = `*[_type == "article" && slug.current == $slug && ${publishedDocument}][0] {
   ${summaryFields},
   body,
-  kind,
+  format,
+  "kind": coalesce(format, kind),
   primaryTopic->{_id, title, "slug": slug.current},
   relatedTopics[]->{_id, title, "slug": slug.current},
   difficulty,
@@ -84,7 +84,7 @@ export const articleBySlugQuery = `*[_type == "article" && slug.current == $slug
   bookAuthor,
   referenceUrl,
   seo,
-  series->{
+  "series": *[_type == "series" && ^._id in articles[]._ref && ${publicDocument}][0] {
     _id,
     title,
     "slug": slug.current,
@@ -118,7 +118,6 @@ export const wikiNavQuery = `{
     _type,
     title,
     "slug": slug.current,
-    domain,
     icon,
     order,
     featured,

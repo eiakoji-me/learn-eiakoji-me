@@ -19,26 +19,20 @@ export const topic = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
-      name: 'domain',
-      title: 'Domain / Area',
-      type: 'string',
-      description: 'High-level category for organizational grouping.',
-      options: {
-        list: [
-          { title: 'System Architecture & Design', value: 'architecture' },
-          { title: 'Languages & Ecosystems', value: 'languages' },
-          { title: 'Cloud & Infrastructure', value: 'cloud' },
-          { title: 'Frontier & AI Systems', value: 'ai' },
-          { title: 'Foundations & Craft', value: 'foundations' },
-        ],
-      },
-    }),
-    defineField({
       name: 'parent',
-      title: 'Parent Topic',
+      title: 'Parent Topic / Domain',
       type: 'reference',
       to: [{ type: 'topic' }],
-      description: 'Leave empty for top-level topics (e.g. Distributed Systems), or select a parent (e.g. Spring Boot -> Java).',
+      description: 'Leave empty for Root Topics / Domains (e.g., Distributed Systems, Languages, Cloud). Select a parent for subtopics.',
+      validation: (rule) =>
+        rule.custom((parent, context) => {
+          if (!parent) return true;
+          const currentDocId = context.document?._id?.replace(/^drafts\./, '');
+          if (parent._ref === currentDocId) {
+            return 'A topic cannot reference itself as its parent.';
+          }
+          return true;
+        }),
     }),
     defineField({
       name: 'summary',
@@ -51,26 +45,26 @@ export const topic = defineType({
       name: 'description',
       title: 'Topic Overview',
       type: 'blockContent',
-      description: 'Detailed topic overview and curriculum notes rendered on the topic hub page.',
+      description: 'Detailed curriculum notes, patterns, or introductory material rendered on the topic hub page.',
     }),
     defineField({
       name: 'icon',
       title: 'Icon Identifier',
       type: 'string',
-      description: 'Optional icon keyword or identifier (e.g., cpu, server, code, book, cloud, brain).',
+      description: 'Optional icon keyword (e.g., cpu, server, code, book, cloud, brain).',
     }),
     defineField({
       name: 'order',
       title: 'Display Order',
       type: 'number',
-      description: 'Sort weight in navigation and topic listings (lowest first).',
+      description: 'Sort weight in navigation and listings (lowest first).',
     }),
     defineField({
       name: 'featured',
       title: 'Featured',
       type: 'boolean',
       initialValue: false,
-      description: 'Feature this topic prominently in navigation and hub highlights.',
+      description: 'Highlight prominently in navigation and topic hub listings.',
     }),
   ],
   orderings: [
@@ -91,14 +85,12 @@ export const topic = defineType({
   preview: {
     select: {
       title: 'title',
-      domain: 'domain',
       parentTitle: 'parent.title',
     },
-    prepare({ title, domain, parentTitle }) {
-      const parts = [domain, parentTitle ? `under ${parentTitle}` : null].filter(Boolean);
+    prepare({ title, parentTitle }) {
       return {
         title,
-        subtitle: parts.length > 0 ? parts.join(' · ') : 'Top-level topic',
+        subtitle: parentTitle ? `under ${parentTitle}` : 'Root Domain / Area',
       };
     },
   },

@@ -18,6 +18,8 @@ import {
   topicSlugsQuery,
   wikiNavQuery,
 } from '../src/lib/sanity/queries.ts';
+import { extractHeadings } from '../src/lib/slugify.ts';
+import { buildTopicTree, getTopicBreadcrumbs } from '../src/lib/topics.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
@@ -46,7 +48,7 @@ function assertPageMarkup(html, { path, emptyText, requiredText }) {
     assert.ok(html.includes(requiredText), `${path} must render its expected recovery state`);
   } else {
     assert.ok(
-      html.includes(emptyText) || html.includes('class="card-grid"'),
+      html.includes(emptyText) || html.includes('class="card-grid"') || html.includes('class="domains-container"'),
       `${path} must render either its empty state or published content`,
     );
   }
@@ -118,6 +120,11 @@ async function testSanityQueries() {
     assert.ok(query.includes('publishedAt <= now()'), 'published article/project queries must exclude future content');
   }
 
+  assert.ok(
+    articleBySlugQuery.includes('"series": *[_type == "series" && ^._id in articles[]._ref'),
+    'article detail query must resolve series via reverse lookup from series.articles',
+  );
+
   const client = createClient({
     projectId: '7rp2puan',
     dataset: 'production',
@@ -157,6 +164,48 @@ async function testSanityQueries() {
   assert.ok(Array.isArray(navResult.series), 'wikiNavQuery series must be an array');
 }
 
+async function testUnitBehaviors() {
+  // Test Heading ID uniqueness and duplicate disambiguation
+  const mockBody = [
+    { _type: 'block', _key: 'k1', style: 'h2', children: [{ text: 'Overview' }] },
+    { _type: 'block', _key: 'k2', style: 'h2', children: [{ text: 'Overview' }] },
+    { _type: 'block', _key: 'k3', style: 'h3', children: [{ text: 'Next Steps & Actions!' }] },
+  ];
+  const headings = extractHeadings(mockBody);
+  assert.equal(headings.length, 3, 'all headings must be extracted');
+  assert.equal(headings[0].slug, 'overview', 'first heading slug must be overview');
+  assert.equal(headings[1].slug, 'overview-1', 'duplicate heading slug must receive unique index suffix');
+  assert.equal(headings[2].slug, 'next-steps-actions', 'symbols should be cleanly normalized');
+
+  // Test Topic Tree cycle prevention and descendant rollup
+  const mockTopics = [
+    { _id: 't-root', _type: 'topic', title: 'Architecture', slug: 'architecture', summary: 'Root domain' },
+    { _id: 't-child', _type: 'topic', title: 'Distributed Systems', slug: 'distributed-systems', summary: 'Subtopic', parent: { _id: 't-root', title: 'Architecture', slug: 'architecture' } },
+    { _id: 't-leaf', _type: 'topic', title: 'Consensus', slug: 'consensus', summary: 'Leaf topic', parent: { _id: 't-child', title: 'Distributed Systems', slug: 'distributed-systems' } },
+    { _id: 't-cycle', _type: 'topic', title: 'Self Loop', slug: 'self-loop', summary: 'Cycle', parent: { _id: 't-cycle', title: 'Self Loop', slug: 'self-loop' } },
+  ];
+  const mockArticles = [
+    { _id: 'a1', _type: 'article', title: 'Raft Paper', slug: 'raft-paper', summary: 'Summary', primaryTopic: { _id: 't-leaf', title: 'Consensus', slug: 'consensus' } },
+  ];
+
+  const tree = buildTopicTree(mockTopics, mockArticles);
+  const rootNode = tree.nodeMap.get('t-root');
+  const childNode = tree.nodeMap.get('t-child');
+  const leafNode = tree.nodeMap.get('t-leaf');
+
+  assert.ok(rootNode, 'root node must exist');
+  assert.equal(leafNode.directArticleCount, 1, 'leaf direct count must equal 1');
+  assert.equal(childNode.rollupArticleCount, 1, 'child must rollup descendant leaf articles');
+  assert.equal(rootNode.rollupArticleCount, 1, 'root must rollup all descendant articles');
+
+  const crumbs = getTopicBreadcrumbs('consensus', tree);
+  assert.equal(crumbs.length, 4, 'breadcrumbs must trace Wiki -> Architecture -> Distributed Systems -> Consensus');
+  assert.equal(crumbs[0].label, 'Topics');
+  assert.equal(crumbs[1].label, 'Architecture');
+  assert.equal(crumbs[2].label, 'Distributed Systems');
+  assert.equal(crumbs[3].label, 'Consensus');
+}
+
 async function testConfiguration() {
   const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema] = await Promise.all([
     readFile('src/styles/global.css', 'utf8'),
@@ -183,10 +232,10 @@ async function testConfiguration() {
   for (const section of ['Local setup', 'Content authoring', 'Netlify preparation', 'Verification']) {
     assert.ok(readme.includes(section), `README must document ${section}`);
   }
-  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series', 'kind', 'primaryTopic']) {
+  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series', 'format', 'primaryTopic']) {
     assert.ok(articleSchema.includes(`name: '${field}'`), `article schema must define ${field}`);
   }
-  for (const field of ['slug', 'summary', 'parent', 'domain', 'order']) {
+  for (const field of ['slug', 'summary', 'parent', 'order']) {
     assert.ok(topicSchema.includes(`name: '${field}'`), `topic schema must define ${field}`);
   }
   for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'repositoryUrl', 'projectUrl']) {
@@ -198,6 +247,7 @@ async function testConfiguration() {
   assert.ok(imageSchema.includes('rule.required()'), 'image alternative text must be required');
 }
 
+await testUnitBehaviors();
 await testConfiguration();
 await testSanityQueries();
 await testBuiltSite();
