@@ -1,0 +1,36 @@
+---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import { fetchContent } from '../../lib/content';
+import { workshopsQuery } from '../../lib/sanity/queries';
+import type { ContentSummary } from '../../lib/sanity/types';
+
+const workshops = await fetchContent<ContentSummary[]>(workshopsQuery);
+---
+
+<WikiLayout title="Workshops" description="Hands-on engineering labs, guided builds, and practical implementations by Eiakoji." currentSlug="workshops">
+  <div class="workshops-index-page">
+    <Breadcrumbs items={[{ label: 'Workshops' }]} />
+    <header class="page-heading">
+      <p class="eyebrow">Hands-on Engineering</p>
+      <h1>Workshops</h1>
+      <p>Guided builds, runnable code labs, and end-to-end technical implementations with architectural rationale.</p>
+    </header>
+    <section class="section" aria-label="Published workshops">
+      {workshops.length > 0 ? (
+        <div class="card-grid">
+          {workshops.map((item) => (
+            <ContentCard item={item} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No published workshops yet"
+          message="Hands-on engineering workshops and guided code builds will appear here after publication."
+        />
+      )}
+    </section>
+  </div>
+</WikiLayout>

@@ -2,36 +2,532 @@
 import ContentCard from '../components/ContentCard.astro';
 import EmptyState from '../components/EmptyState.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { contentHref, formatDate } from '../lib/content';
 import { fetchContent } from '../lib/content';
-import { latestContentQuery } from '../lib/sanity/queries';
+import { homepageQuery } from '../lib/sanity/queries';
 import type { ContentSummary } from '../lib/sanity/types';
 
-const latest = await fetchContent<ContentSummary[]>(latestContentQuery);
+interface HomepageData {
+  featured: ContentSummary[];
+  latest: ContentSummary[];
+  workshops: ContentSummary[];
+  systemDesignTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+    summary: string;
+    archetypesTopic?: {
+      _id: string;
+      title: string;
+      slug: string;
+      summary: string;
+    };
+  };
+  archetypesArticles: ContentSummary[];
+  systemDesignArticles: ContentSummary[];
+  platformTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+    summary: string;
+  };
+  aiTopic?: {
+    _id: string;
+    title: string;
+    slug: string;
+    summary: string;
+  };
+}
+
+const data = await fetchContent<HomepageData>(homepageQuery);
+
+const featured = data.featured ?? [];
+const leadFeature = featured[0];
+const secondaryFeatures = featured.slice(1, 3);
+
+const latest = data.latest ?? [];
+const workshops = data.workshops ?? [];
+const archetypesArticles = data.archetypesArticles ?? [];
+const systemDesignArticles = data.systemDesignArticles ?? [];
 ---
 
 <BaseLayout>
-  <section class="hero">
-    <div class="shell hero-grid">
-      <div>
-        <p class="eyebrow">A working notebook</p>
-        <h1>Learn deeply.<br />Build clearly.</h1>
-        <p class="hero-copy">Technical articles, project write-ups, and connected series from experiments that made something click.</p>
+  <!-- 1. FEATURED CONTENT HERO -->
+  <section class="section shell featured-section" aria-labelledby="featured-heading">
+    <div class="section-header">
+      <h1 id="featured-heading" class="visually-hidden">wiki.eiakoji.me — Featured Technical Knowledge</h1>
+      <p class="eyebrow">Featured Work</p>
+    </div>
+
+    {featured.length > 0 ? (
+      <div class="featured-grid">
+        <!-- Lead Feature -->
+        <article class="lead-feature-card">
+          <a class="lead-link" href={contentHref(leadFeature._type, leadFeature.slug)} aria-label={`Read ${leadFeature.title}`}>
+            <div class="card-meta">
+              {leadFeature.primaryTopic && <span class="card-domain">{leadFeature.primaryTopic.title}</span>}
+              <span class="card-format">{leadFeature.format || leadFeature.kind || 'Article'}</span>
+              {leadFeature.publishedAt && <time datetime={leadFeature.publishedAt}>{formatDate(leadFeature.publishedAt)}</time>}
+            </div>
+            <h2 class="lead-title">{leadFeature.title}</h2>
+            <p class="lead-summary">{leadFeature.summary}</p>
+            {leadFeature.relatedTopics && leadFeature.relatedTopics.length > 0 && (
+              <ul class="card-topics" aria-label="Topics">
+                {leadFeature.relatedTopics.slice(0, 3).map((topic) => (
+                  <li>{topic.title}</li>
+                ))}
+              </ul>
+            )}
+            <span class="card-action">Read complete entry <span aria-hidden="true">→</span></span>
+          </a>
+        </article>
+
+        <!-- Secondary Features Stack -->
+        <div class="secondary-stack">
+          {secondaryFeatures.length > 0 ? (
+            secondaryFeatures.map((item) => (
+              <article class="secondary-card">
+                <a class="secondary-link" href={contentHref(item._type, item.slug)} aria-label={`Read ${item.title}`}>
+                  <div class="card-meta">
+                    {item.primaryTopic && <span class="card-domain">{item.primaryTopic.title}</span>}
+                    <span class="card-format">{item.format || item.kind || 'Article'}</span>
+                  </div>
+                  <h3 class="secondary-title">{item.title}</h3>
+                  <p class="secondary-summary">{item.summary}</p>
+                  <span class="card-action">Explore <span aria-hidden="true">→</span></span>
+                </a>
+              </article>
+            ))
+          ) : (
+            <div class="secondary-card secondary-placeholder">
+              <p class="eyebrow">Curated Technical Publication</p>
+              <h3>Focused Engineering Knowledge</h3>
+              <p>Articles, guided workshops, and system design archetypes exploring distributed systems, platform infrastructure, and AI engineering.</p>
+            </div>
+          )}
+        </div>
       </div>
-      <aside class="hero-aside">
-        <p><strong>What lives here?</strong><br />Practical notes that preserve both the result and the reasoning behind it.</p>
-      </aside>
+    ) : (
+      <EmptyState
+        title="Publication ready"
+        message="Curated featured articles, system design archetypes, and workshops will appear here once published."
+      />
+    )}
+  </section>
+
+  <!-- 2. SYSTEM DESIGN & ARCHETYPES -->
+  <section class="section shell system-design-section" aria-labelledby="system-design-heading">
+    <div class="section-header">
+      <div>
+        <h2 id="system-design-heading">System Design</h2>
+        <p class="section-subheading">Scalability, distributed consensus, data systems, and architectural patterns.</p>
+      </div>
+      <a class="section-nav-link" href="/topics/system-design/">Browse System Design →</a>
+    </div>
+
+    <!-- Archetypes Spotlight Module -->
+    <div class="archetypes-banner">
+      <div class="archetypes-header">
+        <span class="archetypes-badge">ARCHETYPES</span>
+        <h3>Reusable Architectural Blueprints</h3>
+        <p class="archetypes-copy">
+          Mapping recurring system-design archetypes (write-ahead logs, event loops, replicated state machines, CQRS) to production systems.
+        </p>
+      </div>
+      <div class="archetypes-footer">
+        <a class="button primary" href="/topics/system-design/">Explore System Design Hub →</a>
+      </div>
+    </div>
+
+    {archetypesArticles.length > 0 || systemDesignArticles.length > 0 ? (
+      <div class="card-grid system-design-grid">
+        {[...archetypesArticles, ...systemDesignArticles].slice(0, 4).map((item) => (
+          <ContentCard item={item} />
+        ))}
+      </div>
+    ) : null}
+  </section>
+
+  <!-- 3. LATEST PUBLICATIONS -->
+  <section class="section shell latest-section" aria-labelledby="latest-heading">
+    <div class="section-header">
+      <div>
+        <h2 id="latest-heading">Latest Publications</h2>
+        <p class="section-subheading">Chronological stream of technical deep dives, notes, and lab experiments.</p>
+      </div>
+      <a class="section-nav-link" href="/articles/">Browse all articles →</a>
+    </div>
+
+    {latest.length > 0 ? (
+      <div class="card-grid">
+        {latest.slice(0, 6).map((item) => (
+          <ContentCard item={item} />
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        title="The notebook is ready"
+        message="Published articles, workshops, and case studies will appear in this chronological stream."
+      />
+    )}
+  </section>
+
+  <!-- 4. WORKSHOPS MODULE -->
+  <section class="section shell workshops-section" aria-labelledby="workshops-heading">
+    <div class="workshops-banner">
+      <div class="workshops-content">
+        <span class="workshops-badge">WORKSHOPS</span>
+        <h2 id="workshops-heading">Hands-on Engineering Labs & Guided Builds</h2>
+        <p>Explore complete runnable code repositories, step-by-step implementations, and guided architectural walkthroughs.</p>
+      </div>
+      <div class="workshops-action">
+        <a class="button primary" href="/workshops/">All Workshops →</a>
+      </div>
+    </div>
+
+    {workshops.length > 0 && (
+      <div class="card-grid" style="margin-top: 28px;">
+        {workshops.slice(0, 2).map((item) => (
+          <ContentCard item={item} />
+        ))}
+      </div>
+    )}
+  </section>
+
+  <!-- 5. OTHER DOMAINS: PLATFORM & AI ENGINEERING -->
+  <section class="section shell disciplines-section" aria-labelledby="disciplines-heading">
+    <div class="section-header">
+      <div>
+        <h2 id="disciplines-heading">Specialized Disciplines</h2>
+        <p class="section-subheading">Dedicated knowledge hubs for cloud platforms and machine learning infrastructure.</p>
+      </div>
+    </div>
+
+    <div class="disciplines-grid">
+      <article class="discipline-card">
+        <span class="discipline-tag">DOMAIN</span>
+        <h3>Platform Engineering</h3>
+        <p class="discipline-topics">Cloud Native · Infrastructure as Code · Delivery & Observability · Automation</p>
+        <p class="discipline-desc">Foundational architectures for dependable internal developer platforms, container orchestration, and declarative infrastructure.</p>
+        <a class="discipline-link" href="/topics/platform-engineering/">Explore Platform Engineering →</a>
+      </article>
+
+      <article class="discipline-card">
+        <span class="discipline-tag">DOMAIN</span>
+        <h3>AI Engineering</h3>
+        <p class="discipline-topics">ML Systems · LLM Applications · Evaluation Harnesses · MLOps</p>
+        <p class="discipline-desc">Principled engineering practices for reliable, deterministic machine learning pipelines, LLM workflows, and evaluation systems.</p>
+        <a class="discipline-link" href="/topics/ai-engineering/">Explore AI Engineering →</a>
+      </article>
     </div>
   </section>
 
-  <section class="section shell" aria-labelledby="latest-heading">
-    <div class="section-header">
-      <h2 id="latest-heading">Latest work</h2>
-      <a href="/articles/">Browse all articles →</a>
+  <!-- 6. PROJECTS ENTRY -->
+  <section class="section shell projects-strip-section">
+    <div class="projects-bar">
+      <div>
+        <p class="projects-bar-eyebrow">Open-Source & Software</p>
+        <p class="projects-bar-text">Looking for independent open-source tools, runnable libraries, and software releases?</p>
+      </div>
+      <a class="button" href="/projects/">Browse Projects →</a>
     </div>
-    {latest.length > 0 ? (
-      <div class="card-grid">{latest.map((item) => <ContentCard item={item} />)}</div>
-    ) : (
-      <EmptyState title="The notebook is ready" message="Published articles, projects, and series will appear here after the next content build." />
-    )}
   </section>
 </BaseLayout>
+
+<style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .section-subheading {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+  }
+  .section-nav-link {
+    color: var(--accent-dark);
+    font-weight: 750;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .section-nav-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Featured Hero */
+  .featured-section {
+    padding-top: 48px;
+  }
+  .featured-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+    gap: 28px;
+    align-items: stretch;
+  }
+  .lead-feature-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: 0 14px 40px rgb(25 61 51 / .05);
+    transition: transform 160ms ease, border-color 160ms ease;
+  }
+  .lead-feature-card:hover {
+    border-color: #b5bcb4;
+    transform: translateY(-2px);
+  }
+  .lead-link {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: clamp(28px, 4vw, 40px);
+    text-decoration: none;
+  }
+  .lead-title {
+    margin: 16px 0 12px;
+    font-family: Georgia, serif;
+    font-size: clamp(2rem, 3.5vw, 2.85rem);
+    line-height: 1.15;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .lead-summary {
+    color: var(--muted);
+    font-size: clamp(1.05rem, 1.8vw, 1.22rem);
+    margin: 0 0 24px;
+    line-height: 1.6;
+  }
+
+  .secondary-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .secondary-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgb(25 61 51 / .03);
+    transition: transform 160ms ease, border-color 160ms ease;
+    height: 100%;
+  }
+  .secondary-card:hover {
+    border-color: #b5bcb4;
+    transform: translateY(-2px);
+  }
+  .secondary-link {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 24px 28px;
+    text-decoration: none;
+  }
+  .secondary-title {
+    margin: 12px 0 8px;
+    font-family: Georgia, serif;
+    font-size: clamp(1.35rem, 2.2vw, 1.65rem);
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .secondary-summary {
+    color: var(--muted);
+    font-size: 0.96rem;
+    margin: 0 0 16px;
+  }
+  .secondary-placeholder {
+    padding: 32px 28px;
+    background: var(--mint);
+    border-color: #b5d1c2;
+  }
+  .secondary-placeholder h3 {
+    margin: 10px 0;
+    font-family: Georgia, serif;
+    font-size: 1.5rem;
+    color: var(--forest);
+  }
+  .secondary-placeholder p {
+    margin: 0;
+    color: var(--forest);
+    font-size: 0.98rem;
+  }
+
+  /* Archetypes Banner */
+  .archetypes-banner {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    padding: 32px;
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    box-shadow: 0 12px 36px rgb(25 61 51 / .04);
+  }
+  .archetypes-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+  .archetypes-banner h3 {
+    margin: 0 0 8px;
+    font-family: Georgia, serif;
+    font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+    color: var(--ink);
+  }
+  .archetypes-copy {
+    margin: 0;
+    color: var(--muted);
+    max-width: 680px;
+    font-size: 1.02rem;
+  }
+
+  /* Workshops Banner */
+  .workshops-banner {
+    background: var(--forest);
+    color: white;
+    padding: clamp(32px, 5vw, 44px);
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 28px;
+  }
+  .workshops-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--mint);
+    color: var(--forest);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+  .workshops-content h2 {
+    margin: 0 0 10px;
+    font-family: Georgia, serif;
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    font-weight: 500;
+    color: white;
+  }
+  .workshops-content p {
+    margin: 0;
+    color: var(--mint);
+    max-width: 640px;
+    font-size: 1.05rem;
+  }
+  .workshops-action .button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    white-space: nowrap;
+  }
+  .workshops-action .button.primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+  }
+
+  /* Disciplines Grid */
+  .disciplines-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+  .discipline-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgb(25 61 51 / .03);
+  }
+  .discipline-tag {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .discipline-card h3 {
+    margin: 0 0 6px;
+    font-family: Georgia, serif;
+    font-size: 1.6rem;
+    color: var(--ink);
+  }
+  .discipline-topics {
+    font-size: 0.85rem;
+    font-weight: 650;
+    color: var(--accent-dark);
+    margin: 0 0 12px;
+  }
+  .discipline-desc {
+    color: var(--muted);
+    margin: 0 0 20px;
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+  .discipline-link {
+    font-weight: 750;
+    color: var(--accent-dark);
+    text-decoration: none;
+  }
+  .discipline-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Projects Bar */
+  .projects-strip-section {
+    padding-top: 10px;
+    padding-bottom: 40px;
+  }
+  .projects-bar {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+  .projects-bar-eyebrow {
+    margin: 0 0 4px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .projects-bar-text {
+    margin: 0;
+    font-weight: 550;
+    color: var(--ink);
+    font-size: 1.05rem;
+  }
+
+  @media (max-width: 900px) {
+    .featured-grid,
+    .disciplines-grid {
+      grid-template-columns: 1fr;
+    }
+    .archetypes-banner,
+    .workshops-banner,
+    .projects-bar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

@@ -66,6 +66,14 @@ export const article = defineType({
 
     // Editorial & Taxonomy
     defineField({
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+      fieldset: 'editorial',
+      initialValue: false,
+      description: 'Highlight prominently in homepage featured content.',
+    }),
+    defineField({
       name: 'primaryTopic',
       title: 'Primary Topic',
       type: 'reference',

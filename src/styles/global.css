@@ -28,6 +28,7 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.12; 
 .header-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 760; text-decoration: none; letter-spacing: -.02em; }
 .brand-mark { display: grid; place-items: center; width: 34px; aspect-ratio: 1; border-radius: 50%; background: var(--forest); color: white; font-family: Georgia, serif; }
+.brand-avatar { display: block; width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
 nav ul { display: flex; gap: 22px; padding: 0; margin: 0; list-style: none; }
 nav a { color: var(--muted); font-size: .92rem; font-weight: 650; text-decoration: none; }
 nav a:hover, nav a[aria-current="page"] { color: var(--accent-dark); }
@@ -53,7 +54,11 @@ nav a:hover, nav a[aria-current="page"] { color: var(--accent-dark); }
 .card-placeholder { display: grid; place-items: center; color: var(--mint); }
 .card-placeholder span { font: 500 clamp(4rem, 10vw, 8rem) Georgia, serif; opacity: .75; }
 .card-body { padding: 26px; }
-.card-meta { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: .78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted); font-size: .78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.card-domain { color: var(--forest); background: var(--mint); padding: 2px 7px; border-radius: 3px; font-weight: 750; }
+.card-format { color: var(--accent-dark); font-weight: 750; }
+.card-topics { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0 0 16px; list-style: none; }
+.card-topics li { font-size: 0.72rem; color: var(--muted); background: var(--paper); border: 1px solid var(--line); padding: 2px 6px; border-radius: 3px; }
 .card-body h2 { margin: 14px 0 10px; font-size: clamp(1.6rem, 3vw, 2.25rem); font-weight: 500; }
 .card-body p { color: var(--muted); margin: 0 0 20px; }
 .card-action { color: var(--accent-dark); font-weight: 750; }

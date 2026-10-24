@@ -9,6 +9,7 @@ const summaryFields = `
   summary,
   publishedAt,
   featuredImage,
+  featured,
   format,
   "kind": coalesce(format, kind),
   primaryTopic->{_id, title, "slug": slug.current},
@@ -19,6 +20,33 @@ export const latestContentQuery = `*[
   ((_type in ["article", "project"]) && ${publishedDocument}) ||
   (_type == "series" && ${publicDocument})
 ] | order(coalesce(publishedAt, _updatedAt) desc)[0...6] {${summaryFields}}`;
+
+export const workshopsQuery = `*[_type == "article" && (format == "workshop" || kind == "workshop") && ${publishedDocument}] | order(publishedAt desc) {${summaryFields}}`;
+
+export const featuredArticlesQuery = `*[_type == "article" && ${publishedDocument}] | order(coalesce(featured, false) desc, publishedAt desc)[0...3] {${summaryFields}}`;
+
+export const homepageQuery = `{
+  "featured": *[_type == "article" && ${publishedDocument}] | order(coalesce(featured, false) desc, publishedAt desc)[0...3] {${summaryFields}},
+  "latest": *[
+    ((_type in ["article", "project"]) && ${publishedDocument}) ||
+    (_type == "series" && ${publicDocument})
+  ] | order(coalesce(publishedAt, _updatedAt) desc)[0...6] {${summaryFields}},
+  "workshops": *[_type == "article" && (format == "workshop" || kind == "workshop") && ${publishedDocument}] | order(publishedAt desc)[0...3] {${summaryFields}},
+  "systemDesignTopic": *[_type == "topic" && (slug.current in ["system-design", "systems-design"]) && ${publicDocument}][0] {
+    _id, title, "slug": slug.current, summary,
+    "archetypesTopic": *[_type == "topic" && parent._ref == ^._id && (slug.current == "archetypes" || title match "Archetype*") && ${publicDocument}][0] {
+      _id, title, "slug": slug.current, summary
+    }
+  },
+  "archetypesArticles": *[_type == "article" && ${publishedDocument} && (primaryTopic->slug.current == "archetypes" || "archetypes" in relatedTopics[]->slug.current)] | order(publishedAt desc)[0...3] {${summaryFields}},
+  "systemDesignArticles": *[_type == "article" && ${publishedDocument} && (primaryTopic->slug.current in ["system-design", "systems-design", "distributed-systems", "design-patterns", "reliability-and-scale", "data-systems"] || "system-design" in relatedTopics[]->slug.current)] | order(publishedAt desc)[0...3] {${summaryFields}},
+  "platformTopic": *[_type == "topic" && (slug.current in ["platform-engineering", "cloud-platform", "cloud"]) && ${publicDocument}][0] {
+    _id, title, "slug": slug.current, summary
+  },
+  "aiTopic": *[_type == "topic" && (slug.current in ["ai-engineering", "ai-systems", "ai", "multi-agent-systems"]) && ${publicDocument}][0] {
+    _id, title, "slug": slug.current, summary
+  }
+}`;
 
 export const articlesQuery = `*[_type == "article" && ${publishedDocument}] | order(publishedAt desc) {${summaryFields}}`;
 export const projectsQuery = `*[_type == "project" && ${publishedDocument}] | order(publishedAt desc) {${summaryFields}}`;
