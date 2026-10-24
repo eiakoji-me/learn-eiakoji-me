@@ -37,6 +37,11 @@ export interface ContentSummary {
     title: string;
     slug: string;
   };
+  relatedTopics?: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+  }>;
 }
 
 export interface CodeBlock {

@@ -6,7 +6,7 @@ import EmptyState from '../../components/EmptyState.astro';
 import RichText from '../../components/RichText.astro';
 import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent } from '../../lib/content';
-import { topicBySlugQuery, topicSlugsQuery, topicsListQuery } from '../../lib/sanity/queries';
+import { articlesQuery, topicBySlugQuery, topicSlugsQuery, topicsListQuery } from '../../lib/sanity/queries';
 import type { Topic, ContentSummary } from '../../lib/sanity/types';
 import { buildTopicTree, getTopicBreadcrumbs } from '../../lib/topics';
 
@@ -21,14 +21,20 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 const { slug } = Astro.params;
-const [topic, allTopics] = await Promise.all([
+const [topic, allTopics, allArticles] = await Promise.all([
   fetchContent<TopicDetail>(topicBySlugQuery, { slug: slug! }),
   fetchContent<Topic[]>(topicsListQuery),
+  fetchContent<ContentSummary[]>(articlesQuery),
 ]);
 
-const tree = buildTopicTree(allTopics);
+const tree = buildTopicTree(allTopics, allArticles);
 const breadcrumbs = getTopicBreadcrumbs(slug!, tree);
 const currentNode = tree.slugMap.get(slug!);
+
+// Align published entries with the topic and its descendant tree rollups
+const topicArticles = allArticles.filter((article) =>
+  currentNode?.rollupArticleIds.has(article._id)
+);
 ---
 
 <WikiLayout title={topic.title} description={topic.summary} currentSlug={topic.slug}>
@@ -75,9 +81,9 @@ const currentNode = tree.slugMap.get(slug!);
       <div class="section-header">
         <h2>Published Entries</h2>
       </div>
-      {topic.articles && topic.articles.length > 0 ? (
+      {topicArticles.length > 0 ? (
         <div class="card-grid">
-          {topic.articles.map((item) => (
+          {topicArticles.map((item) => (
             <ContentCard item={item} />
           ))}
         </div>

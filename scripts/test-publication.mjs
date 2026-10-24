@@ -19,7 +19,7 @@ import {
   wikiNavQuery,
 } from '../src/lib/sanity/queries.ts';
 import { extractHeadings } from '../src/lib/slugify.ts';
-import { buildTopicTree, getTopicBreadcrumbs } from '../src/lib/topics.ts';
+import { buildTopicTree, getTopicBreadcrumbs, validateTopicHierarchy } from '../src/lib/topics.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
@@ -165,7 +165,7 @@ async function testSanityQueries() {
 }
 
 async function testUnitBehaviors() {
-  // Test Heading ID uniqueness and duplicate disambiguation
+  // 1. Test Heading ID uniqueness and duplicate disambiguation
   const mockBody = [
     { _type: 'block', _key: 'k1', style: 'h2', children: [{ text: 'Overview' }] },
     { _type: 'block', _key: 'k2', style: 'h2', children: [{ text: 'Overview' }] },
@@ -177,37 +177,81 @@ async function testUnitBehaviors() {
   assert.equal(headings[1].slug, 'overview-1', 'duplicate heading slug must receive unique index suffix');
   assert.equal(headings[2].slug, 'next-steps-actions', 'symbols should be cleanly normalized');
 
-  // Test Topic Tree cycle prevention and descendant rollup
-  const mockTopics = [
+  // 2. Test Multi-Document Cycle Detection and Validation Gate
+  const multiHopCycleTopics = [
+    { _id: 't-a', _type: 'topic', title: 'Topic A', slug: 'topic-a', parent: { _id: 't-b', title: 'Topic B', slug: 'topic-b' } },
+    { _id: 't-b', _type: 'topic', title: 'Topic B', slug: 'topic-b', parent: { _id: 't-c', title: 'Topic C', slug: 'topic-c' } },
+    { _id: 't-c', _type: 'topic', title: 'Topic C', slug: 'topic-c', parent: { _id: 't-a', title: 'Topic A', slug: 'topic-a' } },
+  ];
+  const validationResult = validateTopicHierarchy(multiHopCycleTopics);
+  assert.equal(validationResult.valid, false, 'validateTopicHierarchy must reject multi-document circular references');
+  assert.ok(
+    validationResult.errors.some((err) => err.includes('Circular parent reference detected')),
+    'validation errors must report circular reference',
+  );
+
+  // Verify runtime tree builder breaks cycles and strips invalid parent metadata
+  const cycleTree = buildTopicTree(multiHopCycleTopics);
+  for (const node of cycleTree.rootTopics) {
+    assert.equal(node.topic.parent, undefined, 'cycle members promoted to root must have invalid parent stripped');
+  }
+
+  // 3. Test Rollup Deduplication (prevent double counting an article in primary + related topics)
+  const hierarchyTopics = [
     { _id: 't-root', _type: 'topic', title: 'Architecture', slug: 'architecture', summary: 'Root domain' },
     { _id: 't-child', _type: 'topic', title: 'Distributed Systems', slug: 'distributed-systems', summary: 'Subtopic', parent: { _id: 't-root', title: 'Architecture', slug: 'architecture' } },
     { _id: 't-leaf', _type: 'topic', title: 'Consensus', slug: 'consensus', summary: 'Leaf topic', parent: { _id: 't-child', title: 'Distributed Systems', slug: 'distributed-systems' } },
-    { _id: 't-cycle', _type: 'topic', title: 'Self Loop', slug: 'self-loop', summary: 'Cycle', parent: { _id: 't-cycle', title: 'Self Loop', slug: 'self-loop' } },
-  ];
-  const mockArticles = [
-    { _id: 'a1', _type: 'article', title: 'Raft Paper', slug: 'raft-paper', summary: 'Summary', primaryTopic: { _id: 't-leaf', title: 'Consensus', slug: 'consensus' } },
   ];
 
-  const tree = buildTopicTree(mockTopics, mockArticles);
+  // Article assigned to Leaf as primary AND Parent as related
+  const mockArticles = [
+    {
+      _id: 'a1',
+      _type: 'article',
+      title: 'Raft Consensus',
+      slug: 'raft-consensus',
+      summary: 'Summary',
+      primaryTopic: { _id: 't-leaf', title: 'Consensus', slug: 'consensus' },
+      relatedTopics: [{ _id: 't-child', title: 'Distributed Systems', slug: 'distributed-systems' }],
+    },
+  ];
+
+  const tree = buildTopicTree(hierarchyTopics, mockArticles);
   const rootNode = tree.nodeMap.get('t-root');
   const childNode = tree.nodeMap.get('t-child');
   const leafNode = tree.nodeMap.get('t-leaf');
 
-  assert.ok(rootNode, 'root node must exist');
+  assert.ok(rootNode && childNode && leafNode, 'all nodes must exist in tree');
   assert.equal(leafNode.directArticleCount, 1, 'leaf direct count must equal 1');
-  assert.equal(childNode.rollupArticleCount, 1, 'child must rollup descendant leaf articles');
-  assert.equal(rootNode.rollupArticleCount, 1, 'root must rollup all descendant articles');
+  assert.equal(childNode.directArticleCount, 1, 'child direct count must equal 1 via related topic');
+  // Child rollup should be 1 (union of a1, NOT 2)
+  assert.equal(childNode.rollupArticleCount, 1, 'child rollup must union article IDs without double counting');
+  // Root rollup should be 1 (union of a1, NOT 2)
+  assert.equal(rootNode.rollupArticleCount, 1, 'root rollup must union all descendant article IDs without double counting');
 
-  const crumbs = getTopicBreadcrumbs('consensus', tree);
-  assert.equal(crumbs.length, 4, 'breadcrumbs must trace Wiki -> Architecture -> Distributed Systems -> Consensus');
+  // Verify article array filter matches rollupArticleCount exactly
+  const matchedForRoot = mockArticles.filter((a) => rootNode.rollupArticleIds.has(a._id));
+  assert.equal(matchedForRoot.length, rootNode.rollupArticleCount, 'topic hub listing and count must agree');
+
+  // 4. Test 4-level deep hierarchy and breadcrumbs
+  const fourLevelTopics = [
+    { _id: 'l1', _type: 'topic', title: 'Engineering', slug: 'engineering' },
+    { _id: 'l2', _type: 'topic', title: 'Distributed Systems', slug: 'distributed-systems', parent: { _id: 'l1', title: 'Engineering', slug: 'engineering' } },
+    { _id: 'l3', _type: 'topic', title: 'Storage Engines', slug: 'storage-engines', parent: { _id: 'l2', title: 'Distributed Systems', slug: 'distributed-systems' } },
+    { _id: 'l4', _type: 'topic', title: 'LSM Trees', slug: 'lsm-trees', parent: { _id: 'l3', title: 'Storage Engines', slug: 'storage-engines' } },
+  ];
+  const fourLevelTree = buildTopicTree(fourLevelTopics);
+  const crumbs = getTopicBreadcrumbs('lsm-trees', fourLevelTree);
+  assert.equal(crumbs.length, 5, 'breadcrumbs must trace Topics -> Engineering -> Distributed Systems -> Storage Engines -> LSM Trees');
   assert.equal(crumbs[0].label, 'Topics');
-  assert.equal(crumbs[1].label, 'Architecture');
+  assert.equal(crumbs[1].label, 'Engineering');
   assert.equal(crumbs[2].label, 'Distributed Systems');
-  assert.equal(crumbs[3].label, 'Consensus');
+  assert.equal(crumbs[3].label, 'Storage Engines');
+  assert.equal(crumbs[4].label, 'LSM Trees');
 }
 
 async function testConfiguration() {
-  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema] = await Promise.all([
+  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema, tocComponent] = await Promise.all([
     readFile('src/styles/global.css', 'utf8'),
     readFile('netlify.toml', 'utf8'),
     readFile('.gitignore', 'utf8'),
@@ -218,6 +262,7 @@ async function testConfiguration() {
     readFile('sanity/schemaTypes/series.ts', 'utf8'),
     readFile('sanity/schemaTypes/imageWithAlt.ts', 'utf8'),
     readFile('sanity/schemaTypes/topic.ts', 'utf8'),
+    readFile('src/components/TableOfContents.astro', 'utf8'),
   ]);
 
   assert.match(styles, /@media \(max-width: 720px\)/, 'styles must include a small-screen layout');
@@ -238,6 +283,14 @@ async function testConfiguration() {
   for (const field of ['slug', 'summary', 'parent', 'order']) {
     assert.ok(topicSchema.includes(`name: '${field}'`), `topic schema must define ${field}`);
   }
+  assert.ok(
+    topicSchema.includes('Circular parent reference detected in topic hierarchy'),
+    'topic schema must implement ancestor cycle validation',
+  );
+  assert.ok(
+    tocComponent.includes('display: flex') && tocComponent.includes('flex-direction: column'),
+    'TableOfContents .toc-list must enforce vertical column display to override global nav ul',
+  );
   for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'repositoryUrl', 'projectUrl']) {
     assert.ok(projectSchema.includes(`name: '${field}'`), `project schema must define ${field}`);
   }

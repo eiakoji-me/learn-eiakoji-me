@@ -11,7 +11,8 @@ const summaryFields = `
   featuredImage,
   format,
   "kind": coalesce(format, kind),
-  primaryTopic->{_id, title, "slug": slug.current}
+  primaryTopic->{_id, title, "slug": slug.current},
+  "relatedTopics": relatedTopics[]->{_id, title, "slug": slug.current}
 `;
 
 export const latestContentQuery = `*[

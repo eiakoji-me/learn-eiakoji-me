@@ -25,12 +25,42 @@ export const topic = defineType({
       to: [{ type: 'topic' }],
       description: 'Leave empty for Root Topics / Domains (e.g., Distributed Systems, Languages, Cloud). Select a parent for subtopics.',
       validation: (rule) =>
-        rule.custom((parent, context) => {
-          if (!parent) return true;
+        rule.custom(async (parent, context) => {
+          if (!parent?._ref) return true;
           const currentDocId = context.document?._id?.replace(/^drafts\./, '');
           if (parent._ref === currentDocId) {
             return 'A topic cannot reference itself as its parent.';
           }
+
+          try {
+            const client = context.getClient({ apiVersion: '2026-10-01' });
+            if (!client) return true;
+
+            const visited = new Set<string>([currentDocId || '']);
+            let currentParentId: string | undefined = parent._ref;
+            let depth = 0;
+
+            while (currentParentId && depth <= 6) {
+              if (visited.has(currentParentId)) {
+                return 'Circular parent reference detected in topic hierarchy.';
+              }
+              visited.add(currentParentId);
+              depth++;
+
+              if (depth > 4) {
+                return 'Topic hierarchy exceeds maximum supported depth of 4 levels.';
+              }
+
+              const parentDoc: { parent?: { _ref: string } } | null = await client.fetch(
+                `*[_type == "topic" && _id in [$id, "drafts." + $id]][0]{ parent }`,
+                { id: currentParentId }
+              );
+              currentParentId = parentDoc?.parent?._ref;
+            }
+          } catch {
+            // Graceful fallback for offline schema compilation
+          }
+
           return true;
         }),
     }),

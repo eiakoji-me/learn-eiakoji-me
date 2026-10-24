@@ -1,6 +1,7 @@
 ---
 import type { Topic, Series } from '../lib/sanity/types';
 import { buildTopicTree, type TopicNode } from '../lib/topics';
+import TopicTreeItem from './TopicTreeItem.astro';
 
 interface Props {
   topics?: Topic[];
@@ -36,53 +37,9 @@ const rootTopics = tree.rootTopics;
         <div class="nav-section">
           <div class="nav-section-title">Topics & Domains</div>
           <ul class="topic-tree">
-            {rootTopics.map((rootNode: TopicNode) => {
-              const isCurrent = currentSlug === rootNode.topic.slug;
-              return (
-                <li class="topic-node">
-                  <a href={`/topics/${rootNode.topic.slug}/`} class={`topic-link ${isCurrent ? 'active' : ''}`}>
-                    <span class="topic-title">{rootNode.topic.title}</span>
-                    {rootNode.rollupArticleCount > 0 && (
-                      <span class="count-badge">{rootNode.rollupArticleCount}</span>
-                    )}
-                  </a>
-                  {rootNode.children.length > 0 && (
-                    <ul class="subtopic-tree">
-                      {rootNode.children.map((childNode: TopicNode) => {
-                        const isChildCurrent = currentSlug === childNode.topic.slug;
-                        return (
-                          <li class="subtopic-node">
-                            <a href={`/topics/${childNode.topic.slug}/`} class={`subtopic-link ${isChildCurrent ? 'active' : ''}`}>
-                              <span>{childNode.topic.title}</span>
-                              {childNode.rollupArticleCount > 0 && (
-                                <span class="count-badge">{childNode.rollupArticleCount}</span>
-                              )}
-                            </a>
-                            {childNode.children.length > 0 && (
-                              <ul class="nested-subtopic-tree">
-                                {childNode.children.map((grandChildNode: TopicNode) => {
-                                  const isGrandChildCurrent = currentSlug === grandChildNode.topic.slug;
-                                  return (
-                                    <li>
-                                      <a href={`/topics/${grandChildNode.topic.slug}/`} class={`nested-subtopic-link ${isGrandChildCurrent ? 'active' : ''}`}>
-                                        <span>{grandChildNode.topic.title}</span>
-                                        {grandChildNode.rollupArticleCount > 0 && (
-                                          <span class="count-badge">{grandChildNode.rollupArticleCount}</span>
-                                        )}
-                                      </a>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+            {rootTopics.map((rootNode: TopicNode) => (
+              <TopicTreeItem node={rootNode} currentSlug={currentSlug} depth={1} />
+            ))}
           </ul>
         </div>
       )}
