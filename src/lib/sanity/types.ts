@@ -30,6 +30,7 @@ export interface ContentSummary {
   summary: string;
   publishedAt?: string;
   featuredImage?: SanityImage;
+  featured?: boolean;
   format?: ContentFormat;
   kind?: string;
   primaryTopic?: {

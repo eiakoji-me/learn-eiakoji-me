@@ -48,12 +48,20 @@ const href = contentHref(item._type, item.slug);
     )}
     <div class="card-body">
       <div class="card-meta">
+        {item.primaryTopic && <span class="card-domain">{item.primaryTopic.title}</span>}
         <span class="card-format">{label}</span>
         {item.publishedAt && <time datetime={item.publishedAt}>{formatDate(item.publishedAt)}</time>}
         {typeof articleCount === 'number' && <span>{articleCount} {articleCount === 1 ? 'article' : 'articles'}</span>}
       </div>
       <h2>{item.title}</h2>
       <p>{item.summary}</p>
+      {item.relatedTopics && item.relatedTopics.length > 0 && (
+        <ul class="card-topics" aria-label="Topics">
+          {item.relatedTopics.slice(0, 3).map((topic) => (
+            <li>{topic.title}</li>
+          ))}
+        </ul>
+      )}
       <span class="card-action">Explore <span aria-hidden="true">→</span></span>
     </div>
   </a>

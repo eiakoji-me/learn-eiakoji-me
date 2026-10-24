@@ -1,18 +1,19 @@
 ---
 const pathname = Astro.url.pathname;
 const links = [
-  { href: '/topics/', label: 'Topics' },
-  { href: '/articles/', label: 'Articles' },
+  { href: '/topics/system-design/', label: 'System Design' },
+  { href: '/topics/platform-engineering/', label: 'Platform Engineering' },
+  { href: '/topics/ai-engineering/', label: 'AI Engineering' },
+  { href: '/workshops/', label: 'Workshops' },
   { href: '/projects/', label: 'Projects' },
-  { href: '/series/', label: 'Series' },
 ];
 ---
 
 <header class="site-header">
   <div class="shell header-inner">
-    <a class="brand" href="/" aria-label="Eiakoji wiki home">
-      <span class="brand-mark" aria-hidden="true">e/</span>
-      <span>Eiakoji wiki</span>
+    <a class="brand" href="/" aria-label="wiki.eiakoji.me home">
+      <img class="brand-avatar" src="/images/avatar.jpeg" alt="" width="34" height="34" />
+      <span>wiki.eiakoji.me</span>
     </a>
     <nav aria-label="Primary navigation">
       <ul>

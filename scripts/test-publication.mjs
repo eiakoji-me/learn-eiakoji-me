@@ -6,6 +6,8 @@ import {
   articleBySlugQuery,
   articlesQuery,
   articleSlugsQuery,
+  featuredArticlesQuery,
+  homepageQuery,
   latestContentQuery,
   projectBySlugQuery,
   projectsQuery,
@@ -17,6 +19,7 @@ import {
   topicsListQuery,
   topicSlugsQuery,
   wikiNavQuery,
+  workshopsQuery,
 } from '../src/lib/sanity/queries.ts';
 import { extractHeadings } from '../src/lib/slugify.ts';
 import { buildTopicTree, getTopicBreadcrumbs, validateTopicHierarchy } from '../src/lib/topics.ts';
@@ -24,7 +27,8 @@ import { validateTopicParent } from '../sanity/schemaTypes/topic.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const expectedPages = [
-  { path: '/', file: 'dist/index.html', emptyText: 'The notebook is ready' },
+  { path: '/', file: 'dist/index.html', emptyText: 'Publication ready' },
+  { path: '/workshops/', file: 'dist/workshops/index.html', emptyText: 'No published workshops yet' },
   { path: '/topics/', file: 'dist/topics/index.html', emptyText: 'No published topics yet' },
   { path: '/articles/', file: 'dist/articles/index.html', emptyText: 'No published articles yet' },
   { path: '/projects/', file: 'dist/projects/index.html', emptyText: 'No published projects yet' },
@@ -42,14 +46,21 @@ function assertPageMarkup(html, { path, emptyText, requiredText }) {
   assert.match(html, /class="skip-link" href="#main-content"/, `${path} must have skip navigation`);
   assert.match(html, /<main id="main-content">/, `${path} must expose the main landmark`);
   assert.match(html, /<nav aria-label="Primary navigation">/, `${path} must label primary navigation`);
-  for (const label of ['Topics', 'Articles', 'Projects', 'Series']) {
+
+  for (const label of ['System Design', 'Platform Engineering', 'AI Engineering', 'Workshops', 'Projects']) {
     assert.ok(html.includes(label), `${path} must include the ${label} navigation item`);
   }
+  for (const excluded of ['>Articles<', '>Series<', '>Writing<', '>Archetypes<']) {
+    assert.ok(!html.includes(excluded), `${path} must not include ${excluded} in top-level navigation`);
+  }
+  assert.ok(html.includes('https://eiakoji.me'), `${path} must include the eiakoji.me return link in footer`);
+  assert.ok(html.includes('src="/images/avatar.jpeg"'), `${path} must render the avatar brand image in header`);
+
   if (requiredText) {
     assert.ok(html.includes(requiredText), `${path} must render its expected recovery state`);
   } else {
     assert.ok(
-      html.includes(emptyText) || html.includes('class="card-grid"') || html.includes('class="domains-container"'),
+      html.includes(emptyText) || html.includes('class="card-grid"') || html.includes('class="domains-container"') || html.includes('featured-grid'),
       `${path} must render either its empty state or published content`,
     );
   }
@@ -143,6 +154,8 @@ async function testSanityQueries() {
     seriesSlugsQuery,
     topicSlugsQuery,
     topicsListQuery,
+    workshopsQuery,
+    featuredArticlesQuery,
   ];
   for (const query of listQueries) {
     const result = await client.fetch(query);
@@ -164,6 +177,12 @@ async function testSanityQueries() {
   assert.ok(Array.isArray(navResult.topics), 'wikiNavQuery topics must be an array');
   assert.ok(Array.isArray(navResult.series), 'wikiNavQuery series must be an array');
   assert.ok(Array.isArray(navResult.articles), 'wikiNavQuery articles must be an array');
+
+  const homeResult = await client.fetch(homepageQuery);
+  assert.ok(homeResult && typeof homeResult === 'object', 'homepageQuery must return an object');
+  assert.ok(Array.isArray(homeResult.featured), 'homepageQuery featured must be an array');
+  assert.ok(Array.isArray(homeResult.latest), 'homepageQuery latest must be an array');
+  assert.ok(Array.isArray(homeResult.workshops), 'homepageQuery workshops must be an array');
 }
 
 async function testUnitBehaviors() {
@@ -338,7 +357,7 @@ async function testConfiguration() {
   for (const section of ['Local setup', 'Content authoring', 'Netlify preparation', 'Verification']) {
     assert.ok(readme.includes(section), `README must document ${section}`);
   }
-  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series', 'format', 'primaryTopic']) {
+  for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'series', 'format', 'primaryTopic', 'featured']) {
     assert.ok(articleSchema.includes(`name: '${field}'`), `article schema must define ${field}`);
   }
   for (const field of ['slug', 'summary', 'parent', 'order']) {
