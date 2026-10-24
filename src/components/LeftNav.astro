@@ -1,0 +1,183 @@
+---
+import type { Topic, Series, ContentSummary } from '../lib/sanity/types';
+import { buildTopicTree, type TopicNode } from '../lib/topics';
+import TopicTreeItem from './TopicTreeItem.astro';
+
+interface Props {
+  topics?: Topic[];
+  articles?: ContentSummary[];
+  series?: Series[];
+  currentSlug?: string;
+}
+
+const { topics = [], articles = [], series = [], currentSlug } = Astro.props;
+
+const tree = buildTopicTree(topics, articles);
+const rootTopics = tree.rootTopics;
+---
+
+<aside class="wiki-left-nav" aria-label="Knowledge navigation">
+  <details class="wiki-nav-disclosure" open>
+    <summary class="wiki-nav-summary">
+      <span>Navigation & Topics</span>
+      <span class="disclosure-arrow" aria-hidden="true">▾</span>
+    </summary>
+
+    <div class="wiki-nav-content">
+      <div class="nav-section">
+        <div class="nav-section-title">Sections</div>
+        <ul class="nav-links-list">
+          <li><a href="/topics/" class={currentSlug === 'topics' ? 'active' : ''}>All Topics</a></li>
+          <li><a href="/articles/" class={currentSlug === 'articles' ? 'active' : ''}>Articles & Notes</a></li>
+          <li><a href="/series/" class={currentSlug === 'series' ? 'active' : ''}>Learning Paths</a></li>
+          <li><a href="/projects/" class={currentSlug === 'projects' ? 'active' : ''}>Projects</a></li>
+        </ul>
+      </div>
+
+      {rootTopics.length > 0 && (
+        <div class="nav-section">
+          <div class="nav-section-title">Topics & Domains</div>
+          <ul class="topic-tree">
+            {rootTopics.map((rootNode: TopicNode) => (
+              <TopicTreeItem node={rootNode} currentSlug={currentSlug} depth={1} />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {series.length > 0 && (
+        <div class="nav-section">
+          <div class="nav-section-title">Curated Series</div>
+          <ul class="nav-links-list series-nav-list">
+            {series.map((s) => (
+              <li>
+                <a href={`/series/${s.slug}/`} class={currentSlug === s.slug ? 'active' : ''}>
+                  {s.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  </details>
+</aside>
+
+<style>
+  .wiki-left-nav {
+    position: sticky;
+    top: 96px;
+    font-size: 0.88rem;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-right: 12px;
+  }
+  .wiki-nav-disclosure {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+  .wiki-nav-summary {
+    display: none;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    list-style: none;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .wiki-nav-summary::-webkit-details-marker {
+    display: none;
+  }
+  .nav-section {
+    margin-bottom: 26px;
+  }
+  .nav-section-title {
+    margin-bottom: 10px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .nav-links-list, .topic-tree, .subtopic-tree, .nested-subtopic-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .nav-links-list li, .topic-node, .subtopic-node {
+    margin-bottom: 4px;
+  }
+  .nav-links-list a, .topic-link, .subtopic-link, .nested-subtopic-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    color: var(--ink);
+    text-decoration: none;
+    border-radius: 4px;
+    line-height: 1.35;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .nav-links-list a:hover, .topic-link:hover, .subtopic-link:hover, .nested-subtopic-link:hover {
+    background: var(--mint);
+    color: var(--forest);
+  }
+  .nav-links-list a.active, .topic-link.active, .subtopic-link.active, .nested-subtopic-link.active {
+    background: var(--mint);
+    color: var(--accent-dark);
+    font-weight: 700;
+  }
+  .subtopic-tree {
+    margin: 4px 0 6px 14px;
+    border-left: 1px solid var(--line);
+    padding-left: 6px;
+  }
+  .nested-subtopic-tree {
+    margin: 4px 0 6px 12px;
+    border-left: 1px dashed var(--line);
+    padding-left: 6px;
+  }
+  .subtopic-link {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding: 4px 8px;
+  }
+  .nested-subtopic-link {
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding: 3px 6px;
+  }
+  .count-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+  }
+  .series-nav-list a {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  @media (max-width: 960px) {
+    .wiki-left-nav {
+      position: static;
+      max-height: none;
+      margin-bottom: 24px;
+    }
+    .wiki-nav-summary {
+      display: flex;
+    }
+    .wiki-nav-disclosure:not([open]) .wiki-nav-content {
+      display: none;
+    }
+  }
+</style>

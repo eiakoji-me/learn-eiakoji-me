@@ -1,7 +1,8 @@
 ---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ContentCard from '../../components/ContentCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent } from '../../lib/content';
 import { seriesListQuery } from '../../lib/sanity/queries';
 import type { ContentSummary } from '../../lib/sanity/types';
@@ -10,15 +11,27 @@ type SeriesSummary = ContentSummary & { publishedArticleCount: number };
 const series = await fetchContent<SeriesSummary[]>(seriesListQuery);
 ---
 
-<BaseLayout title="Series" description="Ordered learning paths through related technical articles by Eiakoji.">
-  <header class="page-heading shell">
-    <p class="eyebrow">Follow the thread</p>
-    <h1>Series</h1>
-    <p>Ordered learning paths for subjects that need more than one article to explain well.</p>
-  </header>
-  <section class="section shell" aria-label="Published series">
-    {series.length > 0 ? <div class="card-grid">{series.map((item) => <ContentCard item={item} articleCount={item.publishedArticleCount} />)}</div> : (
-      <EmptyState title="No published series yet" message="A series will appear here once it has been created in Sanity." />
-    )}
-  </section>
-</BaseLayout>
+<WikiLayout title="Series & Learning Paths" description="Ordered learning paths through related technical articles by Eiakoji." currentSlug="series">
+  <div class="series-index-page">
+    <Breadcrumbs items={[{ label: 'Series & Learning Paths' }]} />
+    <header class="page-heading">
+      <p class="eyebrow">Follow the thread</p>
+      <h1>Series & Learning Paths</h1>
+      <p>Curated curriculums for complex subjects that need more than one article to explain thoroughly.</p>
+    </header>
+    <section class="section" aria-label="Published series">
+      {series.length > 0 ? (
+        <div class="card-grid">
+          {series.map((item) => (
+            <ContentCard item={item} articleCount={item.publishedArticleCount} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No published series yet"
+          message="A series will appear here once it has been created in Sanity."
+        />
+      )}
+    </section>
+  </div>
+</WikiLayout>

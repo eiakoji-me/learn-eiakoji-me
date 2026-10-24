@@ -1,0 +1,141 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ContentCard from '../../components/ContentCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import RichText from '../../components/RichText.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import { fetchContent } from '../../lib/content';
+import { articlesQuery, topicBySlugQuery, topicSlugsQuery, topicsListQuery } from '../../lib/sanity/queries';
+import type { Topic, ContentSummary } from '../../lib/sanity/types';
+import { buildTopicTree, getTopicBreadcrumbs } from '../../lib/topics';
+
+interface TopicDetail extends Topic {
+  subtopics?: Array<{ _id: string; title: string; slug: string; summary?: string; icon?: string }>;
+  articles?: ContentSummary[];
+}
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const slugs = await fetchContent<string[]>(topicSlugsQuery);
+  return slugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const [topic, allTopics, allArticles] = await Promise.all([
+  fetchContent<TopicDetail>(topicBySlugQuery, { slug: slug! }),
+  fetchContent<Topic[]>(topicsListQuery),
+  fetchContent<ContentSummary[]>(articlesQuery),
+]);
+
+const tree = buildTopicTree(allTopics, allArticles);
+const breadcrumbs = getTopicBreadcrumbs(slug!, tree);
+const currentNode = tree.slugMap.get(slug!);
+
+// Align published entries with the topic and its descendant tree rollups
+const topicArticles = allArticles.filter((article) =>
+  currentNode?.rollupArticleIds.has(article._id)
+);
+---
+
+<WikiLayout title={topic.title} description={topic.summary} currentSlug={topic.slug}>
+  <div class="topic-hub-page">
+    <Breadcrumbs items={breadcrumbs} />
+
+    <header class="entry-header">
+      <div class="entry-meta">
+        <span class="kind-badge">{topic.parent ? 'Subtopic' : 'Domain / Root Topic'}</span>
+        {topic.parent && (
+          <span>Part of <a href={`/topics/${topic.parent.slug}/`}>{topic.parent.title}</a></span>
+        )}
+        {currentNode && currentNode.rollupArticleCount > 0 && (
+          <span>{currentNode.rollupArticleCount} {currentNode.rollupArticleCount === 1 ? 'total entry' : 'total entries'}</span>
+        )}
+      </div>
+      <h1>{topic.title}</h1>
+      <p class="entry-summary">{topic.summary}</p>
+    </header>
+
+    {topic.description && topic.description.length > 0 && (
+      <section class="topic-overview section">
+        <RichText value={topic.description} />
+      </section>
+    )}
+
+    {topic.subtopics && topic.subtopics.length > 0 && (
+      <section class="section subtopics-section" aria-label="Subtopics">
+        <div class="section-header">
+          <h2>Subtopics</h2>
+        </div>
+        <div class="subtopics-grid">
+          {topic.subtopics.map((sub) => (
+            <a href={`/topics/${sub.slug}/`} class="subtopic-card">
+              <h3>{sub.title}</h3>
+              {sub.summary && <p>{sub.summary}</p>}
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="section articles-section" aria-label="Entries under this topic">
+      <div class="section-header">
+        <h2>Published Entries</h2>
+      </div>
+      {topicArticles.length > 0 ? (
+        <div class="card-grid">
+          {topicArticles.map((item) => (
+            <ContentCard item={item} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No published articles yet"
+          message={`Articles on ${topic.title} will appear here as they are published.`}
+        />
+      )}
+    </section>
+  </div>
+</WikiLayout>
+
+<style>
+  .kind-badge {
+    padding: 3px 8px;
+    background: var(--mint);
+    color: var(--forest);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 3px;
+  }
+  .subtopics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .subtopic-card {
+    display: block;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: border-color 140ms ease, transform 140ms ease;
+  }
+  .subtopic-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .subtopic-card h3 {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+    color: var(--forest);
+  }
+  .subtopic-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+</style>

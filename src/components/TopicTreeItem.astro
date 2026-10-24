@@ -1,0 +1,93 @@
+---
+import type { TopicNode } from '../lib/topics';
+
+interface Props {
+  node: TopicNode;
+  currentSlug?: string;
+  depth?: number;
+}
+
+const { node, currentSlug, depth = 1 } = Astro.props;
+const isCurrent = currentSlug === node.topic.slug;
+---
+
+<li class={`topic-node depth-${depth}`}>
+  <a
+    href={`/topics/${node.topic.slug}/`}
+    class={`topic-link depth-${depth} ${isCurrent ? 'active' : ''}`}
+  >
+    <span class="topic-title">{node.topic.title}</span>
+    {node.rollupArticleCount > 0 && (
+      <span class="count-badge">{node.rollupArticleCount}</span>
+    )}
+  </a>
+  {node.children.length > 0 && (
+    <ul class={`subtopic-tree depth-${depth}`}>
+      {node.children.map((child: TopicNode) => (
+        <Astro.self node={child} currentSlug={currentSlug} depth={depth + 1} />
+      ))}
+    </ul>
+  )}
+</li>
+
+<style>
+  .topic-node {
+    margin: 0;
+  }
+  .subtopic-tree {
+    list-style: none;
+    padding-left: 10px;
+    margin: 2px 0 4px;
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .topic-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    text-decoration: none;
+    line-height: 1.35;
+    transition: all 120ms ease;
+  }
+  .topic-link.depth-1 {
+    font-weight: 650;
+    color: var(--forest);
+    font-size: 0.92rem;
+  }
+  .topic-link.depth-2 {
+    font-size: 0.86rem;
+  }
+  .topic-link.depth-3,
+  .topic-link.depth-4 {
+    font-size: 0.82rem;
+  }
+  .topic-link:hover {
+    background: var(--surface);
+    color: var(--accent-dark);
+  }
+  .topic-link.active {
+    background: var(--mint);
+    color: var(--forest);
+    font-weight: 700;
+  }
+  .topic-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .count-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: var(--line);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 10px;
+  }
+</style>

@@ -9,7 +9,26 @@ interface Props {
 }
 
 const { item, articleCount } = Astro.props;
-const label = item._type === 'article' ? 'Article' : item._type === 'project' ? 'Project' : 'Series';
+
+const formatLabels: Record<string, string> = {
+  article: 'Article',
+  'deep-dive': 'Deep Dive',
+  tutorial: 'Tutorial',
+  workshop: 'Workshop',
+  'case-study': 'Case Study',
+  showcase: 'Showcase',
+  'reading-note': 'Reading Note',
+  'reading-notes': 'Reading Note',
+  reference: 'Reference',
+};
+
+const activeFormat = item.format || item.kind;
+const label = item._type === 'series'
+  ? 'Series'
+  : item._type === 'project'
+    ? 'Case Study'
+    : (activeFormat && formatLabels[activeFormat]) || 'Article';
+
 const href = contentHref(item._type, item.slug);
 ---
 
@@ -29,7 +48,7 @@ const href = contentHref(item._type, item.slug);
     )}
     <div class="card-body">
       <div class="card-meta">
-        <span>{label}</span>
+        <span class="card-format">{label}</span>
         {item.publishedAt && <time datetime={item.publishedAt}>{formatDate(item.publishedAt)}</time>}
         {typeof articleCount === 'number' && <span>{articleCount} {articleCount === 1 ? 'article' : 'articles'}</span>}
       </div>

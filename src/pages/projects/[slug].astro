@@ -1,7 +1,8 @@
 ---
 import type { GetStaticPaths } from 'astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import RichText from '../../components/RichText.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent, formatDate } from '../../lib/content';
 import { imageUrl } from '../../lib/sanity/image';
 import { projectBySlugQuery, projectSlugsQuery } from '../../lib/sanity/queries';
@@ -14,26 +15,83 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 const { slug } = Astro.params;
 const project = await fetchContent<Project>(projectBySlugQuery, { slug: slug! });
-const socialImage = project.seo?.image?.asset ? imageUrl(project.seo.image.asset, 1200) : project.featuredImage?.asset ? imageUrl(project.featuredImage.asset, 1200) : undefined;
+const socialImage = project.seo?.image?.asset
+  ? imageUrl(project.seo.image.asset, 1200)
+  : project.featuredImage?.asset
+    ? imageUrl(project.featuredImage.asset, 1200)
+    : undefined;
+
+const breadcrumbs = [
+  { label: 'Projects', href: '/projects/' },
+  { label: project.title },
+];
 ---
 
-<BaseLayout title={project.seo?.title ?? project.title} description={project.seo?.description ?? project.summary} image={socialImage}>
-  <article>
-    <header class="entry entry-header">
-      <div class="entry-meta"><span>Project</span><time datetime={project.publishedAt}>{formatDate(project.publishedAt!)}</time></div>
+<WikiLayout
+  title={project.seo?.title ?? project.title}
+  description={project.seo?.description ?? project.summary}
+  image={socialImage}
+  currentSlug="projects"
+>
+  <article class="wiki-article">
+    <Breadcrumbs items={breadcrumbs} />
+
+    <header class="entry-header">
+      <div class="entry-meta">
+        <span class="project-badge">Case Study</span>
+        <time datetime={project.publishedAt}>{formatDate(project.publishedAt!)}</time>
+      </div>
       <h1>{project.title}</h1>
       <p class="entry-summary">{project.summary}</p>
-      {project.technologies && <ul class="tags">{project.technologies.map((technology) => <li>{technology}</li>)}</ul>}
+      {project.technologies && (
+        <ul class="tags">
+          {project.technologies.map((technology) => (
+            <li>{technology}</li>
+          ))}
+        </ul>
+      )}
       {(project.projectUrl || project.repositoryUrl) && (
         <div class="entry-links">
-          {project.projectUrl && <a class="button primary" href={project.projectUrl}>Visit project ↗</a>}
-          {project.repositoryUrl && <a class="button" href={project.repositoryUrl}>View repository ↗</a>}
+          {project.projectUrl && (
+            <a class="button primary" href={project.projectUrl} target="_blank" rel="noopener noreferrer">
+              Visit project ↗
+            </a>
+          )}
+          {project.repositoryUrl && (
+            <a class="button secondary" href={project.repositoryUrl} target="_blank" rel="noopener noreferrer">
+              View repository ↗
+            </a>
+          )}
         </div>
       )}
     </header>
+
     {project.featuredImage?.asset && (
-      <figure class="entry-image"><img src={imageUrl(project.featuredImage.asset, 1600)} alt={project.featuredImage.alt} width="1600" height="900" /></figure>
+      <figure class="entry-image">
+        <img
+          src={imageUrl(project.featuredImage.asset, 1600)}
+          alt={project.featuredImage.alt}
+          width="1600"
+          height="900"
+        />
+      </figure>
     )}
-    <div class="entry"><RichText value={project.body} /></div>
+
+    <div class="entry-body">
+      <RichText value={project.body} />
+    </div>
   </article>
-</BaseLayout>
+</WikiLayout>
+
+<style>
+  .project-badge {
+    padding: 3px 8px;
+    background: var(--forest);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 3px;
+  }
+</style>

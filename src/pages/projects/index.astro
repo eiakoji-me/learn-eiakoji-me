@@ -1,7 +1,8 @@
 ---
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ContentCard from '../../components/ContentCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import WikiLayout from '../../layouts/WikiLayout.astro';
 import { fetchContent } from '../../lib/content';
 import { projectsQuery } from '../../lib/sanity/queries';
 import type { ContentSummary } from '../../lib/sanity/types';
@@ -9,15 +10,27 @@ import type { ContentSummary } from '../../lib/sanity/types';
 const projects = await fetchContent<ContentSummary[]>(projectsQuery);
 ---
 
-<BaseLayout title="Projects" description="Project case studies and implementation notes by Eiakoji.">
-  <header class="page-heading shell">
-    <p class="eyebrow">From problem to proof</p>
-    <h1>Projects</h1>
-    <p>Case studies that connect the finished work to the tradeoffs, experiments, and implementation behind it.</p>
-  </header>
-  <section class="section shell" aria-label="Published projects">
-    {projects.length > 0 ? <div class="card-grid">{projects.map((item) => <ContentCard item={item} />)}</div> : (
-      <EmptyState title="No published projects yet" message="Published project write-ups will appear here after the next content build." />
-    )}
-  </section>
-</BaseLayout>
+<WikiLayout title="Projects & Case Studies" description="Project case studies, architectures, and implementation notes by Eiakoji." currentSlug="projects">
+  <div class="projects-index-page">
+    <Breadcrumbs items={[{ label: 'Projects & Case Studies' }]} />
+    <header class="page-heading">
+      <p class="eyebrow">From problem to proof</p>
+      <h1>Projects & Case Studies</h1>
+      <p>Case studies and showcases that connect the finished work to tradeoffs, experiments, and technical implementation.</p>
+    </header>
+    <section class="section" aria-label="Published projects">
+      {projects.length > 0 ? (
+        <div class="card-grid">
+          {projects.map((item) => (
+            <ContentCard item={item} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No published projects yet"
+          message="Published project write-ups will appear here after the next content build."
+        />
+      )}
+    </section>
+  </div>
+</WikiLayout>

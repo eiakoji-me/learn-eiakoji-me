@@ -2,7 +2,7 @@ import { defineField, defineType } from 'sanity';
 
 export const series = defineType({
   name: 'series',
-  title: 'Series',
+  title: 'Series / Learning Path',
   type: 'document',
   fields: [
     defineField({ name: 'title', title: 'Title', type: 'string', validation: (rule) => rule.required().min(3).max(120) }),
@@ -14,11 +14,18 @@ export const series = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'primaryTopic',
+      title: 'Topic',
+      type: 'reference',
+      to: [{ type: 'topic' }],
+      description: 'Primary topic for this series / learning path.',
+    }),
+    defineField({
       name: 'summary',
       title: 'Summary',
       type: 'text',
       rows: 3,
-      validation: (rule) => rule.required().min(40).max(240),
+      validation: (rule) => rule.required().min(20).max(300),
     }),
     defineField({ name: 'featuredImage', title: 'Featured image', type: 'imageWithAlt' }),
     defineField({

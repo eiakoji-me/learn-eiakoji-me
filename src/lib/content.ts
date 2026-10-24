@@ -19,6 +19,8 @@ export function formatDate(value: string): string {
 }
 
 export function contentHref(type: string, slug: string): string {
-  const section = type === 'article' ? 'articles' : type === 'project' ? 'projects' : 'series';
-  return `/${section}/${slug}/`;
+  if (type === 'topic') return `/topics/${slug}/`;
+  if (type === 'article') return `/articles/${slug}/`;
+  if (type === 'project') return `/projects/${slug}/`;
+  return `/series/${slug}/`;
 }
