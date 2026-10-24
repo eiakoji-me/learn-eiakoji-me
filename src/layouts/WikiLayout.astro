@@ -4,7 +4,7 @@ import SiteHeader from '../components/SiteHeader.astro';
 import LeftNav from '../components/LeftNav.astro';
 import { fetchContent } from '../lib/content';
 import { wikiNavQuery } from '../lib/sanity/queries';
-import type { Topic, Series } from '../lib/sanity/types';
+import type { Topic, Series, ContentSummary } from '../lib/sanity/types';
 import '../styles/global.css';
 
 interface Props {
@@ -24,7 +24,7 @@ const {
 const pageTitle = title ? `${title} · Eiakoji wiki` : 'Eiakoji wiki';
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://wiki.eiakoji.me');
 
-const navData = await fetchContent<{ topics: Topic[]; series: Series[] }>(wikiNavQuery);
+const navData = await fetchContent<{ topics: Topic[]; articles?: ContentSummary[]; series: Series[] }>(wikiNavQuery);
 ---
 
 <!doctype html>
@@ -47,7 +47,7 @@ const navData = await fetchContent<{ topics: Topic[]; series: Series[] }>(wikiNa
     <a class="skip-link" href="#main-content">Skip to content</a>
     <SiteHeader />
     <div class="wiki-shell">
-      <LeftNav topics={navData?.topics} series={navData?.series} currentSlug={currentSlug} />
+      <LeftNav topics={navData?.topics} articles={navData?.articles} series={navData?.series} currentSlug={currentSlug} />
       <main id="main-content">
         <div class="wiki-main">
           <slot />

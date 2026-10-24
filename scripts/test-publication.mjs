@@ -162,6 +162,7 @@ async function testSanityQueries() {
   assert.ok(navResult && typeof navResult === 'object', 'wikiNavQuery must return an object');
   assert.ok(Array.isArray(navResult.topics), 'wikiNavQuery topics must be an array');
   assert.ok(Array.isArray(navResult.series), 'wikiNavQuery series must be an array');
+  assert.ok(Array.isArray(navResult.articles), 'wikiNavQuery articles must be an array');
 }
 
 async function testUnitBehaviors() {
@@ -233,7 +234,21 @@ async function testUnitBehaviors() {
   const matchedForRoot = mockArticles.filter((a) => rootNode.rollupArticleIds.has(a._id));
   assert.equal(matchedForRoot.length, rootNode.rollupArticleCount, 'topic hub listing and count must agree');
 
-  // 4. Test 4-level deep hierarchy and breadcrumbs
+  // 4. Test Draft-prioritized cycle detection
+  const publishedAndDraftTopics = [
+    { _id: 't-1', _type: 'topic', title: 'Topic 1', slug: 't-1', parent: { _id: 't-2', title: 'Topic 2', slug: 't-2' } },
+    { _id: 't-2', _type: 'topic', title: 'Topic 2', slug: 't-2', parent: { _id: 't-3', title: 'Topic 3', slug: 't-3' } },
+    { _id: 't-3', _type: 'topic', title: 'Topic 3', slug: 't-3' }, // published doc is root, no cycle
+    { _id: 'drafts.t-3', _type: 'topic', title: 'Topic 3 Draft', slug: 't-3', parent: { _id: 't-1', title: 'Topic 1', slug: 't-1' } }, // draft introduces cycle
+  ];
+  const draftValidation = validateTopicHierarchy(publishedAndDraftTopics);
+  assert.equal(draftValidation.valid, false, 'validateTopicHierarchy must prioritize draft and detect circular parent cycle');
+  assert.ok(
+    draftValidation.errors.some((err) => err.includes('Circular parent reference detected')),
+    'draft cycle must be flagged in validation errors',
+  );
+
+  // 5. Test 4-level deep hierarchy and breadcrumbs
   const fourLevelTopics = [
     { _id: 'l1', _type: 'topic', title: 'Engineering', slug: 'engineering' },
     { _id: 'l2', _type: 'topic', title: 'Distributed Systems', slug: 'distributed-systems', parent: { _id: 'l1', title: 'Engineering', slug: 'engineering' } },
@@ -251,7 +266,7 @@ async function testUnitBehaviors() {
 }
 
 async function testConfiguration() {
-  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema, tocComponent] = await Promise.all([
+  const [styles, netlify, ignore, envExample, readme, articleSchema, projectSchema, seriesSchema, imageSchema, topicSchema, tocComponent, topicsIndexPage, leftNavComponent, wikiLayout] = await Promise.all([
     readFile('src/styles/global.css', 'utf8'),
     readFile('netlify.toml', 'utf8'),
     readFile('.gitignore', 'utf8'),
@@ -263,6 +278,9 @@ async function testConfiguration() {
     readFile('sanity/schemaTypes/imageWithAlt.ts', 'utf8'),
     readFile('sanity/schemaTypes/topic.ts', 'utf8'),
     readFile('src/components/TableOfContents.astro', 'utf8'),
+    readFile('src/pages/topics/index.astro', 'utf8'),
+    readFile('src/components/LeftNav.astro', 'utf8'),
+    readFile('src/layouts/WikiLayout.astro', 'utf8'),
   ]);
 
   assert.match(styles, /@media \(max-width: 720px\)/, 'styles must include a small-screen layout');
@@ -288,8 +306,24 @@ async function testConfiguration() {
     'topic schema must implement ancestor cycle validation',
   );
   assert.ok(
+    topicSchema.includes('coalesce(*[_id == "drafts." + $id][0], *[_id == $id][0])'),
+    'topic schema must prioritize drafts over published documents during cycle check',
+  );
+  assert.ok(
     tocComponent.includes('display: flex') && tocComponent.includes('flex-direction: column'),
     'TableOfContents .toc-list must enforce vertical column display to override global nav ul',
+  );
+  assert.ok(
+    topicsIndexPage.includes('buildTopicTree(topics, articles)'),
+    'topics index must pass articles to buildTopicTree for deduplicated rollups',
+  );
+  assert.ok(
+    leftNavComponent.includes('buildTopicTree(topics, articles)'),
+    'LeftNav must pass articles to buildTopicTree for deduplicated rollups',
+  );
+  assert.ok(
+    wikiLayout.includes('articles={navData?.articles}'),
+    'WikiLayout must pass navData.articles to LeftNav',
   );
   for (const field of ['slug', 'summary', 'publishedAt', 'featuredImage', 'body', 'repositoryUrl', 'projectUrl']) {
     assert.ok(projectSchema.includes(`name: '${field}'`), `project schema must define ${field}`);

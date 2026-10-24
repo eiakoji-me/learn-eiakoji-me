@@ -29,26 +29,39 @@ export interface TopicHierarchyValidation {
  */
 export function validateTopicHierarchy(topics: Topic[], maxDepth = 4): TopicHierarchyValidation {
   const errors: string[] = [];
-  const topicMap = new Map<string, Topic>(topics.map((t) => [t._id, t]));
+  const topicMap = new Map<string, Topic>();
+
+  // Index documents, explicitly prioritizing drafts over published versions
+  for (const t of topics) {
+    const canonicalId = t._id.replace(/^drafts\./, '');
+    if (t._id.startsWith('drafts.') || !topicMap.has(canonicalId)) {
+      topicMap.set(canonicalId, t);
+    }
+    topicMap.set(t._id, t);
+  }
 
   for (const topic of topics) {
     if (!topic.parent?._id) continue;
 
+    const parentId = topic.parent._id;
+    const parentCanonical = parentId.replace(/^drafts\./, '');
+
     // Check for orphaned parent
-    if (!topicMap.has(topic.parent._id)) {
-      errors.push(`Topic "${topic.title}" (${topic._id}) references non-existent parent ID "${topic.parent._id}".`);
+    if (!topicMap.has(parentId) && !topicMap.has(parentCanonical)) {
+      errors.push(`Topic "${topic.title}" (${topic._id}) references non-existent parent ID "${parentId}".`);
       continue;
     }
 
     // Check for direct self-reference
-    if (topic.parent._id === topic._id) {
+    const topicCanonical = topic._id.replace(/^drafts\./, '');
+    if (parentId === topic._id || parentCanonical === topicCanonical) {
       errors.push(`Topic "${topic.title}" (${topic._id}) directly references itself as parent.`);
       continue;
     }
 
     // Traverse ancestors to check for multi-document cycles and depth limits
-    const visited = new Set<string>([topic._id]);
-    let currentParentId: string | undefined = topic.parent._id;
+    const visited = new Set<string>([topicCanonical]);
+    let currentParentId: string | undefined = parentCanonical;
     let depth = 0;
 
     while (currentParentId) {
@@ -64,8 +77,8 @@ export function validateTopicHierarchy(topics: Topic[], maxDepth = 4): TopicHier
         break;
       }
 
-      const parentDoc = topicMap.get(currentParentId);
-      currentParentId = parentDoc?.parent?._id;
+      const parentDoc: Topic | undefined = topicMap.get(currentParentId) ?? topicMap.get(`drafts.${currentParentId}`);
+      currentParentId = parentDoc?.parent?._id?.replace(/^drafts\./, '');
     }
   }
 
